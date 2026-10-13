@@ -13,9 +13,11 @@ import type {
 } from './database.types'
 import { DEMO_ACCOUNTS, type DemoAccountId } from './demoData'
 import type { DashboardData } from '@/hooks/useDashboardData'
+import type { Member } from '@/auth/WorkspaceProvider'
 
 // Keys untuk localStorage
 const keyWedding = (id: DemoAccountId) => `serasi:demo_wedding_${id}`
+const keyMembers = (id: DemoAccountId) => `serasi:demo_members_${id}`
 const keyBudget = (id: DemoAccountId) => `serasi:demo_budget_${id}`
 const keyVendors = (id: DemoAccountId) => `serasi:demo_vendors_${id}`
 const keyGuests = (id: DemoAccountId) => `serasi:demo_guests_${id}`
@@ -435,4 +437,31 @@ export function getDynamicDemoDashboardData(demoId: DemoAccountId): DashboardDat
       is_archived: t.is_archived,
     })),
   }
+}
+
+// ---------------------------------------------------------------------------
+// 9. DEMO MEMBERS & AVATARS
+// ---------------------------------------------------------------------------
+export function getDemoMembers(demoId: DemoAccountId): Member[] {
+  const account = DEMO_ACCOUNTS[demoId]
+  const initial: Member[] = account ? [account.me, account.partner] : []
+  return getStored<Member[]>(keyMembers(demoId), initial)
+}
+
+export function saveDemoMembers(demoId: DemoAccountId, members: Member[]): void {
+  setStored(keyMembers(demoId), members)
+}
+
+export function updateDemoMemberAvatar(demoId: DemoAccountId, userId: string, avatarUrl: string | null): Member[] {
+  const members = getDemoMembers(demoId)
+  const next = members.map((m) => (m.userId === userId ? { ...m, avatarUrl } : m))
+  saveDemoMembers(demoId, next)
+  return next
+}
+
+export function updateDemoMemberName(demoId: DemoAccountId, userId: string, name: string): Member[] {
+  const members = getDemoMembers(demoId)
+  const next = members.map((m) => (m.userId === userId ? { ...m, name } : m))
+  saveDemoMembers(demoId, next)
+  return next
 }

@@ -1,13 +1,14 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Download, Info, LogOut, Save, ShieldAlert, UserMinus } from 'lucide-react'
+import { Camera, Download, Info, Loader2, LogOut, Save, ShieldAlert, Trash2, UserMinus } from 'lucide-react'
 import { useAuth } from '@/auth/AuthProvider'
 import { firstName, useWedding, useWorkspace } from '@/auth/WorkspaceProvider'
 import { getCurrentDemoAccount } from '@/lib/demoData'
-import { updateDemoWedding } from '@/lib/demoStore'
-import { CoverImage, CoverPhotoControls, MemberAvatar } from '@/components/couple/Cover'
+import { updateDemoMemberName, updateDemoWedding } from '@/lib/demoStore'
+import { deleteProfileAvatar, uploadProfileAvatar, validateAvatarFile } from '@/lib/avatar'
+import { AvatarUploadButton, CoverImage, CoverPhotoControls, MemberAvatar } from '@/components/couple/Cover'
 import { PartnerInvite } from '@/components/couple/PartnerInvite'
 import { Badge } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -133,10 +134,128 @@ function WeddingProfileCard() {
   )
 }
 
+function ProfilePhotoSection() {
+  const { user } = useAuth()
+  const { me, wedding, refresh } = useWorkspace()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
+  const [status, setStatus] = useState<Status>(null)
+
+  if (!user || !me) return null
+
+  async function handleFile(file: File | undefined) {
+    if (!file || !user || !me) return
+    const errorMsg = validateAvatarFile(file)
+    if (errorMsg) {
+      setStatus({ tone: 'danger', text: errorMsg })
+      return
+    }
+
+    setUploading(true)
+    setStatus(null)
+    try {
+      await uploadProfileAvatar({
+        userId: user.id,
+        weddingId: wedding?.id,
+        file,
+        previousUrl: me.avatarUrl,
+      })
+      await refresh()
+      setStatus({ tone: 'success', text: 'Foto profil berhasil diperbarui.' })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Gagal mengunggah foto profil. Coba lagi.'
+      setStatus({ tone: 'danger', text: msg })
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  async function handleDelete() {
+    if (!user || !me) return
+    setUploading(true)
+    setStatus(null)
+    try {
+      await deleteProfileAvatar({
+        userId: user.id,
+        weddingId: wedding?.id,
+        previousUrl: me.avatarUrl,
+      })
+      await refresh()
+      setStatus({ tone: 'success', text: 'Foto profil dihapus. Kembali menggunakan avatar inisial.' })
+    } catch {
+      setStatus({ tone: 'danger', text: 'Gagal menghapus foto profil. Coba lagi.' })
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <p className="text-sm font-semibold text-ink">Foto profil</p>
+        <p className="text-xs text-ink-muted">Foto ini akan muncul di profil, catatan kita, dan navigasi aplikasi.</p>
+      </div>
+
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+        <div className="relative inline-flex self-start">
+          <MemberAvatar member={me} size="xl" className="ring-4 ring-primary/20 shadow-sm" />
+          {uploading && (
+            <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-[1px]">
+              <Loader2 className="size-6 animate-spin" aria-hidden />
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1 space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="sr-only"
+              tabIndex={-1}
+              aria-hidden
+              onChange={(e) => void handleFile(e.target.files?.[0])}
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={uploading}
+              onClick={() => fileInputRef.current?.click()}
+              icon={uploading ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Camera className="size-4" aria-hidden />}
+            >
+              {me.avatarUrl ? 'Ganti foto profil' : 'Unggah foto profil'}
+            </Button>
+            {me.avatarUrl && (
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={uploading}
+                onClick={() => void handleDelete()}
+                icon={<Trash2 className="size-4 text-danger" aria-hidden />}
+                className="text-danger hover:bg-danger-soft"
+              >
+                Hapus foto
+              </Button>
+            )}
+          </div>
+          <p className="text-xs text-ink-muted">
+            Format JPG, PNG, atau WebP (maks. 5 MB). Foto dipotong bujur sangkar otomatis.
+          </p>
+        </div>
+      </div>
+
+      {status && <Alert tone={status.tone}>{status.text}</Alert>}
+    </div>
+  )
+}
+
 const accountSchema = z.object({ fullName: z.string().trim().min(2, 'Nama minimal 2 karakter.').max(120, 'Nama terlalu panjang.') })
 
 function AccountCard() {
   const { user, signOut } = useAuth()
+  const { refresh, me } = useWorkspace()
   const [status, setStatus] = useState<Status>(null)
   const {
     register,
@@ -145,47 +264,60 @@ function AccountCard() {
     formState: { errors, isSubmitting, isDirty },
   } = useForm<z.infer<typeof accountSchema>>({
     resolver: zodResolver(accountSchema),
-    defaultValues: { fullName: String(user?.user_metadata?.full_name ?? '') },
+    defaultValues: { fullName: String(me?.name ?? user?.user_metadata?.full_name ?? '') },
   })
 
   async function onSubmit({ fullName }: z.infer<typeof accountSchema>) {
     setStatus(null)
+    const demo = getCurrentDemoAccount()
+    if (demo && user) {
+      updateDemoMemberName(demo.id, user.id, fullName)
+      await refresh()
+      reset({ fullName })
+      setStatus({ tone: 'success', text: 'Nama profil berhasil diperbarui.' })
+      return
+    }
+
     // RLS: hanya baris profil dengan id = auth.uid() yang bisa diubah.
     const [profile, meta] = await Promise.all([
       db().from('profiles').update({ full_name: fullName }).eq('id', user!.id),
       db().auth.updateUser({ data: { full_name: fullName } }),
     ])
     if (profile.error || meta.error) return setStatus({ tone: 'danger', text: 'Nama gagal disimpan. Coba lagi.' })
+    await refresh()
     reset({ fullName })
     setStatus({ tone: 'success', text: 'Profil akun tersimpan.' })
   }
 
-
   return (
     <Card>
-      <CardHeader title="Akun" description="Data login dikelola dengan aman oleh Supabase Auth." />
-      <CardBody>
-        <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
-          <div className="grid gap-5 sm:grid-cols-2">
-            <TextField label="Nama lengkap" autoComplete="name" error={errors.fullName?.message} {...register('fullName')} />
-            <TextField
-              label="Email"
-              value={user?.email ?? ''}
-              readOnly
-              disabled
-              hint="Metode login: Email"
-            />
-          </div>
-          {status && <Alert tone={status.tone}>{status.text}</Alert>}
-          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
-            <Button variant="secondary" onClick={() => void signOut()} icon={<LogOut className="size-4" aria-hidden />}>
-              Keluar
-            </Button>
-            <Button type="submit" loading={isSubmitting} disabled={!isDirty} icon={<Save className="size-4" aria-hidden />}>
-              Simpan nama
-            </Button>
-          </div>
-        </form>
+      <CardHeader title="Profil & Akun" description="Kelola foto profil, identitas, dan data akunmu." />
+      <CardBody className="space-y-6">
+        <ProfilePhotoSection />
+
+        <div className="border-t border-border pt-6">
+          <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
+            <div className="grid gap-5 sm:grid-cols-2">
+              <TextField label="Nama lengkap" autoComplete="name" error={errors.fullName?.message} {...register('fullName')} />
+              <TextField
+                label="Email"
+                value={user?.email ?? ''}
+                readOnly
+                disabled
+                hint="Metode login: Email"
+              />
+            </div>
+            {status && <Alert tone={status.tone}>{status.text}</Alert>}
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+              <Button variant="secondary" onClick={() => void signOut()} icon={<LogOut className="size-4" aria-hidden />}>
+                Keluar
+              </Button>
+              <Button type="submit" loading={isSubmitting} disabled={!isDirty} icon={<Save className="size-4" aria-hidden />}>
+                Simpan nama
+              </Button>
+            </div>
+          </form>
+        </div>
       </CardBody>
     </Card>
   )
@@ -254,10 +386,13 @@ function DataCard() {
 
 function CoupleCard() {
   const wedding = useWedding()
+  const { user } = useAuth()
   const { me, partner, members, refresh } = useWorkspace()
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const [avatarStatus, setAvatarStatus] = useState<Status>(null)
   if (!me) return null
 
   async function removePartner() {
@@ -282,6 +417,27 @@ function CoupleCard() {
     }
   }
 
+  async function handleAvatarUpload(file: File) {
+    if (!user) return
+    const errorMsg = validateAvatarFile(file)
+    if (errorMsg) {
+      setAvatarStatus({ tone: 'danger', text: errorMsg })
+      return
+    }
+    setAvatarUploading(true)
+    setAvatarStatus(null)
+    try {
+      await uploadProfileAvatar({ userId: user.id, weddingId: wedding?.id, file, previousUrl: me?.avatarUrl })
+      await refresh()
+      setAvatarStatus({ tone: 'success', text: 'Foto profil diperbarui.' })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Gagal mengunggah foto. Coba lagi.'
+      setAvatarStatus({ tone: 'danger', text: msg })
+    } finally {
+      setAvatarUploading(false)
+    }
+  }
+
   return (
     <Card>
       <CardHeader title="Pasangan & foto sampul" description="Workspace ini dipakai bersama oleh kalian berdua." />
@@ -290,10 +446,15 @@ function CoupleCard() {
           <CoverImage path={wedding.cover_photo_path} alt="Foto sampul" className="h-44" />
           <CoverPhotoControls className="absolute bottom-3 right-3" />
         </div>
+        {avatarStatus && <Alert tone={avatarStatus.tone}>{avatarStatus.text}</Alert>}
         <ul className="divide-y divide-border rounded-xl border border-border">
           {members.map((mem) => (
             <li key={mem.userId} className="flex items-center gap-3 p-3.5">
-              <MemberAvatar member={mem} />
+              {mem.isMe ? (
+                <AvatarUploadButton member={mem} onUpload={(f) => void handleAvatarUpload(f)} loading={avatarUploading} />
+              ) : (
+                <MemberAvatar member={mem} />
+              )}
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold text-ink">
                   {mem.name} {mem.isMe && <span className="font-normal text-ink-muted">(kamu)</span>}

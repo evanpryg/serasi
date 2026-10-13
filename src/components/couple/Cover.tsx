@@ -130,25 +130,121 @@ export function CoverPhotoControls({ className, tone = 'light' }: { className?: 
   )
 }
 
-/** Avatar inisial; warna mengikuti peran (owner hijau, partner maroon) seperti dua buku nikah. */
-export function MemberAvatar({ member, size = 'md', className }: { member: Pick<Member, 'name' | 'role' | 'avatarUrl'>; size?: 'sm' | 'md' | 'lg'; className?: string }) {
+/** Avatar foto atau inisial; warna mengikuti peran (owner hijau, partner maroon) seperti dua buku nikah. */
+export function MemberAvatar({
+  member,
+  size = 'md',
+  className,
+}: {
+  member: Pick<Member, 'name' | 'role' | 'avatarUrl'>
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl'
+  className?: string
+}) {
+  const [imgError, setImgError] = useState(false)
   const initials = member.name
     .split(/\s+/)
     .slice(0, 2)
     .map((s) => s[0]?.toUpperCase() ?? '')
     .join('')
-  const sizes = { sm: 'size-8 text-xs', md: 'size-11 text-sm', lg: 'size-16 text-lg' }
+  const sizes = {
+    sm: 'size-8 text-xs',
+    md: 'size-11 text-sm',
+    lg: 'size-16 text-lg',
+    xl: 'size-20 text-2xl',
+    '2xl': 'size-24 text-3xl',
+  }
+
   return (
     <span
       className={cn(
-        'inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold text-white ring-2 ring-white',
+        'inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold text-white ring-2 ring-white select-none',
         member.role === 'owner' ? 'bg-primary' : 'bg-rose',
         sizes[size],
         className,
       )}
       aria-hidden
     >
-      {member.avatarUrl ? <img src={member.avatarUrl} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" /> : initials}
+      {member.avatarUrl && !imgError ? (
+        <img
+          key={member.avatarUrl}
+          src={member.avatarUrl}
+          alt={member.name}
+          className="h-full w-full object-cover"
+          referrerPolicy="no-referrer"
+          onError={() => setImgError(true)}
+        />
+      ) : (
+        initials
+      )}
     </span>
   )
 }
+
+/**
+ * Wrapper avatar yang menambahkan tombol kamera kecil di pojok kanan bawah,
+ * sehingga user bisa mengganti foto profil langsung dari daftar anggota.
+ * Hanya tampil untuk member yang merupakan diri sendiri (isMe).
+ */
+export function AvatarUploadButton({
+  member,
+  size = 'md',
+  onUpload,
+  loading = false,
+  className,
+}: {
+  member: Pick<Member, 'name' | 'role' | 'avatarUrl' | 'isMe'>
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl'
+  onUpload: (file: File) => void
+  loading?: boolean
+  className?: string
+}) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const cameraSize = size === 'sm' ? 'size-5' : size === 'md' ? 'size-6' : 'size-7'
+  const iconSize = size === 'sm' ? 'size-2.5' : size === 'md' ? 'size-3' : 'size-3.5'
+
+  return (
+    <div className={cn('relative inline-flex shrink-0', className)}>
+      <MemberAvatar member={member} size={size} />
+      {member.isMe && (
+        <>
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="sr-only"
+            tabIndex={-1}
+            aria-label={`Ganti foto profil ${member.name}`}
+            onChange={(e) => {
+              const f = e.target.files?.[0]
+              if (f) onUpload(f)
+              e.target.value = ''
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={loading}
+            title="Ganti foto profil"
+            className={cn(
+              'absolute -bottom-0.5 -right-0.5 flex items-center justify-center rounded-full border-2 border-white bg-surface shadow-sm transition-colors hover:bg-surface-muted disabled:opacity-60',
+              cameraSize,
+            )}
+          >
+            {loading ? (
+              <Loader2 className={cn(iconSize, 'animate-spin text-ink-muted')} aria-hidden />
+            ) : (
+              <Camera className={cn(iconSize, 'text-ink')} aria-hidden />
+            )}
+          </button>
+        </>
+      )}
+      {/* Overlay upload spinner */}
+      {loading && (
+        <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50">
+          <Loader2 className="size-4 animate-spin text-white" aria-hidden />
+        </div>
+      )}
+    </div>
+  )
+}
+

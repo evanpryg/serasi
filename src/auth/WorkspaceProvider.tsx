@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { MemberRole, Wedding } from '@/lib/database.types'
 import { db } from '@/lib/supabase'
 import { getCurrentDemoAccount } from '@/lib/demoData'
-import { getDemoWedding } from '@/lib/demoStore'
+import { getDemoMembers, getDemoWedding } from '@/lib/demoStore'
 import { useAuth } from './AuthProvider'
 
 
@@ -51,7 +51,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     const demo = getCurrentDemoAccount()
     if (demo) {
       setWedding(getDemoWedding(demo.id))
-      setMembers([demo.me, demo.partner])
+      setMembers(getDemoMembers(demo.id))
       loadedOnce.current = true
       setLoading(false)
       return
