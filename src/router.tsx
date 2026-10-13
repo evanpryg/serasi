@@ -29,6 +29,7 @@ const KitaPage = named(() => import('@/pages/app/kita/KitaPage'), 'KitaPage')
 const PersonalityPage = named(() => import('@/pages/app/kita/PersonalityPage'), 'PersonalityPage')
 const DeepTalkPage = named(() => import('@/pages/app/kita/DeepTalkPage'), 'DeepTalkPage')
 const BudgetPage = named(() => import('@/pages/app/BudgetPage'), 'BudgetPage')
+const SavingsPage = named(() => import('@/pages/app/SavingsPage'), 'SavingsPage')
 const VendorsPage = named(() => import('@/pages/app/VendorsPage'), 'VendorsPage')
 const ChecklistPage = named(() => import('@/pages/app/ChecklistPage'), 'ChecklistPage')
 const GuestsPage = named(() => import('@/pages/app/GuestsPage'), 'GuestsPage')
@@ -93,6 +94,7 @@ export const router = createBrowserRouter([
                   { index: true, element: <Navigate to="/app/dashboard" replace /> },
                   { path: 'dashboard', element: <DashboardPage /> },
                   { path: 'budget', element: <BudgetPage /> },
+                  { path: 'tabungan', element: <SavingsPage /> },
                   { path: 'vendors', element: <VendorsPage /> },
                   { path: 'checklist', element: <ChecklistPage /> },
                   { path: 'guests', element: <GuestsPage /> },

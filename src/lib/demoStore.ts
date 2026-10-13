@@ -6,6 +6,7 @@ import type {
   Payment,
   PersonalityResult,
   RundownItem,
+  SavingsEntry,
   Task,
   Wedding,
   WeddingVendor,
@@ -22,6 +23,7 @@ const keyRundown = (id: DemoAccountId) => `serasi:demo_rundown_${id}`
 const keyPersonality = (id: DemoAccountId) => `serasi:demo_personality_${id}`
 const keyDeepTalk = (id: DemoAccountId) => `serasi:demo_deeptalk_${id}`
 const keyTasks = (id: DemoAccountId) => `serasi:checklist_${id}`
+const keySavings = (id: DemoAccountId) => `serasi:demo_savings_${id}`
 
 function getStored<T>(key: string, fallback: T): T {
   try {
@@ -309,6 +311,84 @@ export function saveDemoDeepTalkAnswer(
 
   setStored<DeepTalkStore>(keyDeepTalk(demoId), { answers: nextAnswers })
   return newRow
+}
+
+// ---------------------------------------------------------------------------
+// 7b. TABUNGAN BERSAMA
+// Seperti trigger database: setiap perubahan setoran ikut mengubah available_funds.
+// ---------------------------------------------------------------------------
+/** Contoh setoran rutin kedua anggota (sudah termasuk dalam available_funds data demo). */
+function seedSavings(demoId: DemoAccountId): SavingsEntry[] {
+  const account = DEMO_ACCOUNTS[demoId]
+  if (!account) return []
+  const rows: [string, number, string, string | null][] =
+    demoId === 'demo-gratis'
+      ? [
+          [account.me.userId, 3_000_000, '2026-07-25', 'Gaji Juli'],
+          [account.partner.userId, 2_500_000, '2026-07-27', 'Gaji Juli'],
+          [account.me.userId, 3_000_000, '2026-08-25', 'Gaji Agustus'],
+          [account.partner.userId, 2_500_000, '2026-08-27', null],
+          [account.partner.userId, 4_000_000, '2026-09-10', 'Bonus proyek'],
+          [account.me.userId, 3_000_000, '2026-09-25', 'Gaji September'],
+          [account.partner.userId, 2_500_000, '2026-09-27', 'Gaji September'],
+          [account.me.userId, 1_500_000, '2026-10-03', 'Jual motor lama (cicilan 1)'],
+          [account.partner.userId, 6_000_000, '2026-10-08', 'Arisan keluarga'],
+        ]
+      : [
+          [account.me.userId, 10_000_000, '2026-07-01', 'Gaji + THR'],
+          [account.partner.userId, 8_000_000, '2026-07-02', 'Gaji Juli'],
+          [account.me.userId, 7_500_000, '2026-08-01', null],
+          [account.partner.userId, 7_500_000, '2026-08-02', 'Gaji Agustus'],
+          [account.me.userId, 7_000_000, '2026-09-01', 'Gaji September'],
+          [account.partner.userId, 5_000_000, '2026-10-02', 'Gaji Oktober'],
+        ]
+  return rows.map(([user_id, amount, saved_on, note], i) => ({
+    id: `sav_seed_${i}`,
+    wedding_id: account.wedding.id,
+    user_id,
+    amount,
+    saved_on,
+    note,
+    created_at: `${saved_on}T08:00:00Z`,
+    updated_at: `${saved_on}T08:00:00Z`,
+  }))
+}
+
+export function getDemoSavings(demoId: DemoAccountId): SavingsEntry[] {
+  return getStored<SavingsEntry[]>(keySavings(demoId), seedSavings(demoId))
+}
+
+function adjustDemoFunds(demoId: DemoAccountId, delta: number): void {
+  if (delta === 0) return
+  const w = getDemoWedding(demoId)
+  updateDemoWedding(demoId, { available_funds: Math.max(w.available_funds + delta, 0) })
+}
+
+export function addDemoSavings(demoId: DemoAccountId, entry: Pick<SavingsEntry, 'wedding_id' | 'user_id' | 'amount' | 'saved_on' | 'note'>): SavingsEntry {
+  const now = new Date().toISOString()
+  const row: SavingsEntry = { ...entry, id: `sav_demo_${Date.now()}`, created_at: now, updated_at: now }
+  setStored(keySavings(demoId), [row, ...getDemoSavings(demoId)])
+  adjustDemoFunds(demoId, row.amount)
+  return row
+}
+
+export function updateDemoSavings(demoId: DemoAccountId, id: string, updates: Partial<Pick<SavingsEntry, 'amount' | 'saved_on' | 'note'>>): void {
+  const list = getDemoSavings(demoId)
+  const prev = list.find((e) => e.id === id)
+  if (!prev) return
+  setStored(
+    keySavings(demoId),
+    list.map((e) => (e.id === id ? { ...e, ...updates, updated_at: new Date().toISOString() } : e)),
+  )
+  if (updates.amount != null) adjustDemoFunds(demoId, updates.amount - prev.amount)
+}
+
+export function deleteDemoSavings(demoId: DemoAccountId, id: string): void {
+  const list = getDemoSavings(demoId)
+  const prev = list.find((e) => e.id === id)
+  if (!prev) return
+  setStored(keySavings(demoId), list.filter((e) => e.id !== id))
+  adjustDemoFunds(demoId, -prev.amount)
 }
 
 // ---------------------------------------------------------------------------

@@ -53,6 +53,7 @@ async function freshDb() {
 const tests = {
   'uji isolasi antar-user': readFileSync(join(root, 'supabase', 'tests', 'rls_isolation.sql'), 'utf8'),
   'uji akun pasangan': readFileSync(join(root, 'supabase', 'tests', 'couple_access.sql'), 'utf8'),
+  'uji tabungan bersama': readFileSync(join(root, 'supabase', 'tests', 'savings_access.sql'), 'utf8'),
 }
 let failed = false
 
@@ -73,7 +74,7 @@ async function runAll(db) {
   if (error) {
     failed = true
     console.error('✗ gagal →', error)
-  } else console.log('✓ migration, uji isolasi, dan uji akun pasangan lulus')
+  } else console.log('✓ migration, uji isolasi, akun pasangan, dan tabungan bersama lulus')
 }
 
 // 2. Mutation test: kebocoran yang sengaja dibuat HARUS terdeteksi
@@ -91,6 +92,12 @@ const mutations = {
      create policy leak on public.personality_results for select to authenticated using (public.is_wedding_member(wedding_id));`,
   'jawaban deep talk terlihat sebelum menjawab': `drop policy "Deeptalk: read own or partner after answering" on public.deeptalk_answers;
      create policy leak on public.deeptalk_answers for select to authenticated using (public.is_wedding_member(wedding_id));`,
+  'setoran pasangan bisa diubah': `drop policy "Savings: update own" on public.savings_entries;
+     create policy leak on public.savings_entries for update to authenticated
+       using (public.is_wedding_member(wedding_id)) with check (public.is_wedding_member(wedding_id));`,
+  'tabungan terbaca workspace lain': `drop policy "Savings: members read" on public.savings_entries;
+     create policy leak on public.savings_entries for select to authenticated using (true);`,
+  'dana tidak ikut setoran': `drop trigger savings_entries_sync_funds on public.savings_entries;`,
   'profil semua user terbuka': `drop policy "Partner profile: select" on public.profiles;
      create policy leak on public.profiles for select to authenticated using (true);`,
 }

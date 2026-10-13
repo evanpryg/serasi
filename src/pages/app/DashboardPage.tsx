@@ -8,6 +8,7 @@ import {
   ChevronRight,
   CircleDollarSign,
   ListChecks,
+  PiggyBank,
   ReceiptText,
   Store,
   UserPlus,
@@ -339,6 +340,7 @@ function PlanningProgress({ done, total, chosenVendors, duePayments }: { done: n
 
 function QuickActions() {
   const actions: { label: string; to: string; icon: LucideIcon }[] = [
+    { label: 'Tabungan', to: '/app/tabungan#catat', icon: PiggyBank },
     { label: 'Pengeluaran', to: '/app/budget', icon: ReceiptText },
     { label: 'Vendor', to: '/app/vendors', icon: Store },
     { label: 'Tugas', to: '/app/checklist', icon: ListChecks },
@@ -349,7 +351,7 @@ function QuickActions() {
     <Card>
       <CardHeader title="Tambah cepat" />
       <CardBody className="pt-4">
-        <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-3">
+        <ul className="grid grid-cols-3 gap-2 sm:grid-cols-6 lg:grid-cols-3">
           {actions.map(({ label, to, icon: Icon }) => (
             <li key={label}>
               <Link

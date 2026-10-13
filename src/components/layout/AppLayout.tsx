@@ -10,6 +10,7 @@ import {
   LogOut,
   MessageCircleHeart,
   MoreHorizontal,
+  PiggyBank,
   Settings,
   Store,
   Users,
@@ -31,6 +32,7 @@ type NavItem = { to: string; label: string; icon: LucideIcon; end?: boolean }
 const PLANNING: NavItem[] = [
   { to: '/app/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/app/budget', label: 'Budget', icon: Wallet },
+  { to: '/app/tabungan', label: 'Tabungan bersama', icon: PiggyBank },
   { to: '/app/vendors', label: 'Vendor', icon: Store },
   { to: '/app/checklist', label: 'Checklist', icon: ListChecks },
   { to: '/app/guests', label: 'Tamu', icon: Users },
@@ -51,6 +53,7 @@ const MOBILE_PRIMARY: NavItem[] = [
   { to: '/app/checklist', label: 'Checklist', icon: ListChecks },
 ]
 const MOBILE_MORE: NavItem[] = [
+  { to: '/app/tabungan', label: 'Tabungan bersama', icon: PiggyBank },
   { to: '/app/vendors', label: 'Vendor', icon: Store },
   { to: '/app/guests', label: 'Tamu', icon: Users },
   { to: '/app/rundown', label: 'Rundown', icon: CalendarClock },

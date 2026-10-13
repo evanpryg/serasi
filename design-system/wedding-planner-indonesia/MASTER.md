@@ -68,7 +68,9 @@ pada avatar, huruf tipe kepribadian, gelembung jawaban deep talk, dan cincin log
 - Desktop (≥1024px): sidebar kiri tetap.
 - Desktop: grup "Perencanaan" dan "Kita berdua" (Kita, Tes kepribadian, Deep talk).
 - Mobile: bottom navigation 5 item (Beranda, Budget, Kita, Checklist, Lainnya);
-  "Lainnya" membuka sheet berisi Vendor, Tamu, Rundown, Pengaturan, Keluar.
+  "Lainnya" membuka sheet berisi Tabungan bersama, Vendor, Tamu, Rundown, Pengaturan, Keluar.
+- Aksi yang sering dipakai tapi tersembunyi di "Lainnya" diberi pintasan di Dashboard "Tambah cepat"
+  dengan deep link yang langsung memfokuskan field (contoh `/app/tabungan#catat`).
 - Target sentuh minimal 44×44px.
 
 ## Pola halaman perencanaan (Budget, Vendor, Checklist, Tamu, Rundown)
@@ -79,6 +81,10 @@ Komponen di `src/components/ui/PageKit.tsx`. Urutan tetap supaya pengguna tidak 
 4. Filter `ChipGroup` (membungkus, ada jumlah) + `SearchInput` berlabel.
 5. Daftar berbentuk kartu/baris, bukan tabel lebar (aman di 375px). Aksi selalu terlihat (bukan hanya saat hover).
 6. Hapus selalu lewat `ConfirmDialog` (bukan `window.confirm`); aksi langka/berbahaya di bagian bawah halaman.
+- Pencatatan berulang (Tabungan bersama): form inline, bukan modal. Default terisi (tanggal hari ini,
+  atas nama user), chip nominal cepat (+100 rb … +5 jt) dan "Sama seperti terakhir", label tombol
+  memuat nominal ("Simpan Rp 1.000.000"), konfirmasi sukses inline yang hilang sendiri (4 dtk).
+  Target: catat setoran dalam 2 ketukan. Layar ≥1280px: form menempel di kolom kanan.
 - Angka keuangan di halaman mana pun memakai `calculateFinance` (lib/finance) agar sama dengan Dashboard.
 
 ## Format lokal

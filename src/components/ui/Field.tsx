@@ -148,10 +148,11 @@ type MoneyFieldProps = {
   name?: string
   id?: string
   disabled?: boolean
+  autoFocus?: boolean
 }
 
 /** Input nominal rupiah: menampilkan "12.500.000", menyimpan integer. */
-export function MoneyField({ label, hint, error, optional, value, onChange, onBlur, name, id: idProp, disabled }: MoneyFieldProps) {
+export function MoneyField({ label, hint, error, optional, value, onChange, onBlur, name, id: idProp, disabled, autoFocus }: MoneyFieldProps) {
   const autoId = useId()
   const id = idProp ?? autoId
   return (
@@ -166,6 +167,7 @@ export function MoneyField({ label, hint, error, optional, value, onChange, onBl
           inputMode="numeric"
           autoComplete="off"
           disabled={disabled}
+          autoFocus={autoFocus}
           value={value == null ? '' : formatNumber(value)}
           onChange={(e) => onChange(parseRupiahInput(e.target.value))}
           onBlur={onBlur}

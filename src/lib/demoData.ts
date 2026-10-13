@@ -86,7 +86,7 @@ export const DEMO_ACCOUNTS: Record<DemoAccountId, DemoAccount> = {
       event_types: ['resepsi', 'akad'],
       guest_estimate: 350,
       budget_target: 85000000,
-      available_funds: 90000000,
+      available_funds: 68000000,
       wedding_style: 'Modern Tradisional',
       tradition: 'Sunda',
       cover_photo_path: null,

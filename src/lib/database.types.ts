@@ -182,6 +182,16 @@ export type RundownItem = Timestamps & {
   notes: string | null
 }
 
+export type SavingsEntry = Timestamps & {
+  id: string
+  wedding_id: string
+  user_id: string
+  amount: number
+  /** "YYYY-MM-DD" */
+  saved_on: string
+  note: string | null
+}
+
 type Table<Row, Required extends keyof Row> = {
   Row: Row
   Insert: Partial<Row> & Pick<Row, Required>
@@ -205,6 +215,7 @@ export type Database = {
       wedding_invites: Table<WeddingInvite, 'wedding_id' | 'code'>
       personality_results: Table<PersonalityResult, 'wedding_id' | 'type_code' | 'scores' | 'answers'>
       deeptalk_answers: Table<DeepTalkAnswer, 'wedding_id' | 'question_id' | 'answer'>
+      savings_entries: Table<SavingsEntry, 'wedding_id' | 'amount'>
     }
     Views: { [_ in never]: never }
     Functions: {
