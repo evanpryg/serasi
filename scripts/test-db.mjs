@@ -54,6 +54,7 @@ const tests = {
   'uji isolasi antar-user': readFileSync(join(root, 'supabase', 'tests', 'rls_isolation.sql'), 'utf8'),
   'uji akun pasangan': readFileSync(join(root, 'supabase', 'tests', 'couple_access.sql'), 'utf8'),
   'uji tabungan bersama': readFileSync(join(root, 'supabase', 'tests', 'savings_access.sql'), 'utf8'),
+  'uji rincian anggaran': readFileSync(join(root, 'supabase', 'tests', 'budget_items.sql'), 'utf8'),
 }
 let failed = false
 
@@ -74,7 +75,7 @@ async function runAll(db) {
   if (error) {
     failed = true
     console.error('✗ gagal →', error)
-  } else console.log('✓ migration, uji isolasi, akun pasangan, dan tabungan bersama lulus')
+  } else console.log('✓ migration, uji isolasi, akun pasangan, tabungan bersama, dan rincian anggaran lulus')
 }
 
 // 2. Mutation test: kebocoran yang sengaja dibuat HARUS terdeteksi
@@ -98,6 +99,8 @@ const mutations = {
   'tabungan terbaca workspace lain': `drop policy "Savings: members read" on public.savings_entries;
      create policy leak on public.savings_entries for select to authenticated using (true);`,
   'dana tidak ikut setoran': `drop trigger savings_entries_sync_funds on public.savings_entries;`,
+  'hapus pos lewati RLS (SECURITY DEFINER)': `alter function public.delete_budget_category(uuid) security definer;`,
+  'link item tanpa validasi': `alter table public.expenses drop constraint expenses_link_url_check;`,
   'profil semua user terbuka': `drop policy "Partner profile: select" on public.profiles;
      create policy leak on public.profiles for select to authenticated using (true);`,
 }

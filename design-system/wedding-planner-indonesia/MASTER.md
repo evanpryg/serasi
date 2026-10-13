@@ -86,6 +86,12 @@ Komponen di `src/components/ui/PageKit.tsx`. Urutan tetap supaya pengguna tidak 
   memuat nominal ("Simpan Rp 1.000.000"), konfirmasi sukses inline yang hilang sendiri (4 dtk).
   Target: catat setoran dalam 2 ketukan. Layar ≥1280px: form menempel di kolom kanan.
 - Angka keuangan di halaman mana pun memakai `calculateFinance` (lib/finance) agar sama dengan Dashboard.
+- Anggaran: **tanpa tab**. Pos = kartu accordion (`h3 > button`, isi hanya span) dengan "Sisa" besar di kanan
+  (jatah − sudah dibayar − rencana). Rincian item tinggal di dalam posnya: centang bulat = sudah dibayar,
+  link toko ("Buka di Shopee ↗", tab baru), catatan, ubah/hapus inline. Form tambah item selalu ada di bawah
+  rincian (nama + harga cukup, Enter menyimpan, fokus kembali ke nama); pratinjau "Sisa pos setelah ini".
+  Pos baru dibuat inline (chip nama umum → fokus ke jatah), lalu langsung terbuka dengan fokus di tambah item.
+  Pos yang terbuka disimpan di hash `#pos-<id>`. Kontrak vendor tampil read-only di posnya.
 
 ## Format lokal
 - Rupiah: `Rp 12.500.000` (Intl `id-ID`, tanpa desimal). Singkat: `Rp 12,5 jt`.

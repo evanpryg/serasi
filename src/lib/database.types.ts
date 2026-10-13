@@ -114,6 +114,8 @@ export type Expense = Timestamps & {
   status: ExpenseStatus
   fund_source: string | null
   proof_path: string | null
+  /** Tautan toko (Shopee, Tokopedia, IG vendor) — http(s) saja. */
+  link_url: string | null
   notes: string | null
 }
 
@@ -242,6 +244,7 @@ export type Database = {
         Returns: { wedding_title: string; wedding_date: string | null; inviter_name: string | null }[]
       }
       accept_wedding_invite: { Args: { p_code: string }; Returns: string }
+      delete_budget_category: { Args: { p_category_id: string }; Returns: undefined }
       personality_progress: { Args: { p_wedding_id: string }; Returns: { user_id: string; completed_at: string }[] }
       deeptalk_progress: { Args: { p_wedding_id: string }; Returns: { user_id: string; question_id: string }[] }
     }

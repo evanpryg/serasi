@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { db } from '@/lib/supabase'
 import { getCurrentDemoAccount } from '@/lib/demoData'
+import { toDateOnly } from '@/lib/format'
 import {
   addDemoCategory,
   addDemoExpense,
   addDemoGuest,
   addDemoRundownItem,
   addDemoVendor,
+  deleteDemoCategory,
   deleteDemoExpense,
   deleteDemoGuest,
   deleteDemoRundownItem,
@@ -16,6 +18,8 @@ import {
   getDemoRundown,
   getDemoVendors,
   saveDemoGuests,
+  updateDemoCategory,
+  updateDemoExpense,
   updateDemoVendorStatus,
 } from '@/lib/demoStore'
 import type {
@@ -40,6 +44,19 @@ export type BudgetData = {
   /** Dibutuhkan calculateFinance agar kontrak vendor & jadwal bayar tidak dihitung ganda. */
   vendors: WeddingVendor[]
 }
+
+export type ExpenseInput = {
+  title: string
+  amount: number
+  status?: Expense['status']
+  expense_date?: string | null
+  link_url?: string | null
+  notes?: string | null
+}
+
+export type CategoryInput = { name: string; planned_amount: number; notes?: string | null; is_reserve?: boolean }
+
+const todayStr = () => toDateOnly(new Date())
 
 export function useBudgetData(weddingId: string) {
   const [state, setState] = useState<Load<BudgetData>>({ status: 'loading' })
@@ -80,92 +97,137 @@ export function useBudgetData(weddingId: string) {
     void load()
   }, [load])
 
+  /** Perbarui state lokal dulu agar terasa instan; data server dimuat ulang setelahnya. */
+  const patchLocal = useCallback((fn: (d: BudgetData) => BudgetData) => {
+    setState((s) => (s.status === 'ready' ? { status: 'ready', data: fn(s.data) } : s))
+  }, [])
+
   const createExpense = useCallback(
-    async (input: { category_id: string; title: string; amount: number; expense_date?: string | null; fund_source?: string | null; status?: Expense['status'] }) => {
-      const demo = getCurrentDemoAccount()
-      const dateStr = (input.expense_date ?? new Date().toISOString().split('T')[0]) as string
-      const fundStr = (input.fund_source ?? 'Tabungan Bersama') as string
-      if (demo) {
-        addDemoExpense(demo.id, {
-          wedding_id: weddingId,
-          category_id: input.category_id,
-          title: input.title,
-          amount: input.amount,
-          expense_date: dateStr,
-          fund_source: fundStr,
-          status: input.status ?? 'paid',
-          vendor_id: null,
-          proof_path: null,
-          notes: null,
-        })
-        void load()
-        return
-      }
-      const client = db()
-      const { error } = await client.from('expenses').insert({
+    async (input: ExpenseInput & { category_id: string }) => {
+      const row = {
         wedding_id: weddingId,
         category_id: input.category_id,
         title: input.title,
         amount: input.amount,
-        expense_date: dateStr,
-        fund_source: fundStr,
-        status: input.status ?? 'paid',
-      })
-      if (error) void load()
-      else void load()
+        status: input.status ?? 'planned',
+        expense_date: input.status === 'paid' ? (input.expense_date ?? todayStr()) : (input.expense_date ?? null),
+        link_url: input.link_url ?? null,
+        notes: input.notes ?? null,
+        fund_source: null,
+      }
+      const demo = getCurrentDemoAccount()
+      if (demo) {
+        addDemoExpense(demo.id, { ...row, vendor_id: null, proof_path: null })
+        void load()
+        return
+      }
+      const { error } = await db().from('expenses').insert(row)
+      void load()
+      if (error) throw error
     },
     [weddingId, load],
   )
 
+  const updateExpense = useCallback(
+    async (id: string, input: Partial<ExpenseInput>) => {
+      const patch: Partial<Expense> = { ...input }
+      // Item lunas wajib bertanggal (constraint expenses_paid_has_date).
+      if (input.status === 'paid' && !input.expense_date) {
+        const current = state.status === 'ready' ? state.data.expenses.find((e) => e.id === id) : undefined
+        patch.expense_date = current?.expense_date ?? todayStr()
+      }
+      patchLocal((d) => ({ ...d, expenses: d.expenses.map((e) => (e.id === id ? { ...e, ...patch } : e)) }))
+      const demo = getCurrentDemoAccount()
+      if (demo) {
+        updateDemoExpense(demo.id, id, patch)
+        return
+      }
+      const { error } = await db().from('expenses').update(patch).eq('id', id)
+      if (error) {
+        void load()
+        throw error
+      }
+    },
+    [state, patchLocal, load],
+  )
+
   const deleteExpense = useCallback(
     async (expenseId: string) => {
+      patchLocal((d) => ({ ...d, expenses: d.expenses.filter((e) => e.id !== expenseId) }))
       const demo = getCurrentDemoAccount()
       if (demo) {
         deleteDemoExpense(demo.id, expenseId)
-        void load()
         return
       }
       const { error } = await db().from('expenses').delete().eq('id', expenseId)
-      if (error) void load()
-      else void load()
+      if (error) {
+        void load()
+        throw error
+      }
     },
-    [load],
+    [patchLocal, load],
   )
 
+  /** Mengembalikan id pos baru agar halaman bisa langsung membukanya. */
   const createCategory = useCallback(
-    async (input: { name: string; planned_amount: number; notes?: string | null; is_reserve?: boolean }) => {
-      const demo = getCurrentDemoAccount()
-      if (demo) {
-        const nextOrder = state.status === 'ready' ? state.data.categories.length + 1 : 1
-        addDemoCategory(demo.id, {
-          wedding_id: weddingId,
-          name: input.name,
-          planned_amount: input.planned_amount,
-          notes: input.notes ?? null,
-          is_reserve: Boolean(input.is_reserve),
-          is_archived: false,
-          sort_order: nextOrder,
-          template_key: null,
-        })
-        void load()
-        return
-      }
-      const nextOrder = state.status === 'ready' ? state.data.categories.length + 1 : 1
-      const { error } = await db().from('budget_categories').insert({
+    async (input: CategoryInput): Promise<string> => {
+      const nextOrder = state.status === 'ready' ? Math.max(0, ...state.data.categories.map((c) => c.sort_order)) + 1 : 1
+      const row = {
         wedding_id: weddingId,
         name: input.name,
         planned_amount: input.planned_amount,
         notes: input.notes ?? null,
         is_reserve: Boolean(input.is_reserve),
         sort_order: nextOrder,
-      })
-      if (error) void load()
-      else void load()
+      }
+      const demo = getCurrentDemoAccount()
+      if (demo) {
+        const cat = addDemoCategory(demo.id, { ...row, is_archived: false, template_key: null })
+        void load()
+        return cat.id
+      }
+      const { data, error } = await db().from('budget_categories').insert(row).select('id').single()
+      if (error) throw error
+      await load()
+      return data.id
     },
     [weddingId, state, load],
   )
 
-  return { state, reload: load, createExpense, deleteExpense, createCategory }
+  const updateCategory = useCallback(
+    async (id: string, input: Partial<CategoryInput>) => {
+      patchLocal((d) => ({ ...d, categories: d.categories.map((c) => (c.id === id ? { ...c, ...input } : c)) }))
+      const demo = getCurrentDemoAccount()
+      if (demo) {
+        updateDemoCategory(demo.id, id, input)
+        return
+      }
+      const { error } = await db().from('budget_categories').update(input).eq('id', id)
+      if (error) {
+        void load()
+        throw error
+      }
+    },
+    [patchLocal, load],
+  )
+
+  /** Hapus pos beserta semua itemnya (RPC atomik). Kontrak vendor di pos ini menjadi "tanpa pos". */
+  const deleteCategory = useCallback(
+    async (id: string) => {
+      const demo = getCurrentDemoAccount()
+      if (demo) {
+        deleteDemoCategory(demo.id, id)
+        void load()
+        return
+      }
+      const { error } = await db().rpc('delete_budget_category', { p_category_id: id })
+      void load()
+      if (error) throw error
+    },
+    [load],
+  )
+
+  return { state, reload: load, createExpense, updateExpense, deleteExpense, createCategory, updateCategory, deleteCategory }
 }
 
 // ---------------------------------------------------------------------------

@@ -115,6 +115,30 @@ export function deleteDemoExpense(demoId: DemoAccountId, expId: string): void {
   saveDemoBudget(demoId, next)
 }
 
+export function updateDemoExpense(demoId: DemoAccountId, expId: string, updates: Partial<Expense>): void {
+  const current = getDemoBudget(demoId)
+  const now = new Date().toISOString()
+  const expenses = current.expenses.map((e) => (e.id === expId ? { ...e, ...updates, updated_at: now } : e))
+  saveDemoBudget(demoId, { ...current, expenses })
+}
+
+export function updateDemoCategory(demoId: DemoAccountId, catId: string, updates: Partial<BudgetCategory>): void {
+  const current = getDemoBudget(demoId)
+  const now = new Date().toISOString()
+  const categories = current.categories.map((c) => (c.id === catId ? { ...c, ...updates, updated_at: now } : c))
+  saveDemoBudget(demoId, { ...current, categories })
+}
+
+/** Hapus pos beserta item di dalamnya (sama dengan RPC delete_budget_category). */
+export function deleteDemoCategory(demoId: DemoAccountId, catId: string): void {
+  const current = getDemoBudget(demoId)
+  saveDemoBudget(demoId, {
+    ...current,
+    categories: current.categories.filter((c) => c.id !== catId),
+    expenses: current.expenses.filter((e) => e.category_id !== catId),
+  })
+}
+
 // ---------------------------------------------------------------------------
 // 3. VENDORS
 // ---------------------------------------------------------------------------
