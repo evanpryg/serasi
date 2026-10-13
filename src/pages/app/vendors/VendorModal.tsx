@@ -99,7 +99,7 @@ export function VendorModal({ isOpen, onClose, categories, onSubmit }: VendorMod
           <X className="size-5" />
         </button>
 
-        <h3 className="font-display text-xl font-bold text-ink">Tambah Vendor Baru</h3>
+        <h3 className="font-display text-xl font-bold text-ink">Tambah vendor</h3>
         <p className="mt-1 text-xs text-ink-muted">
           Catat vendor kandidat, PIC kontak, atau vendor yang sudah deal/kontrak.
         </p>
@@ -112,7 +112,7 @@ export function VendorModal({ isOpen, onClose, categories, onSubmit }: VendorMod
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-ink">Nama Vendor / Brand</label>
+            <label className="block text-sm font-semibold text-ink">Nama vendor</label>
             <input
               type="text"
               required
@@ -125,7 +125,7 @@ export function VendorModal({ isOpen, onClose, categories, onSubmit }: VendorMod
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-ink">Kategori Layanan</label>
+              <label className="block text-sm font-semibold text-ink">Jenis vendor</label>
               <select
                 value={categoryKey}
                 onChange={(e) => setCategoryKey(e.target.value)}
@@ -140,13 +140,13 @@ export function VendorModal({ isOpen, onClose, categories, onSubmit }: VendorMod
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-ink">Pos Anggaran Terkait</label>
+              <label className="block text-sm font-semibold text-ink">Masuk ke pos anggaran (opsional)</label>
               <select
                 value={budgetCatId}
                 onChange={(e) => setBudgetCatId(e.target.value)}
                 className="mt-1 block w-full rounded-xl border border-border bg-canvas px-3 py-2.5 text-xs text-ink focus:border-primary focus:outline-none"
               >
-                <option value="">Tidak Dikaitkan</option>
+                <option value="">Tidak dikaitkan</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -157,23 +157,23 @@ export function VendorModal({ isOpen, onClose, categories, onSubmit }: VendorMod
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-ink">Status Kerjasama</label>
+            <label className="block text-sm font-semibold text-ink">Status</label>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as WeddingVendor['status'])}
               className="mt-1 block w-full rounded-xl border border-border bg-canvas px-3 py-2.5 text-xs text-ink focus:border-primary focus:outline-none"
             >
               <option value="kandidat">Kandidat</option>
-              <option value="dihubungi">Sudah Dihubungi</option>
+              <option value="dihubungi">Sudah dihubungi</option>
               <option value="dipertimbangkan">Dipertimbangkan</option>
-              <option value="dipilih">Dipilih (Deal / Kontrak)</option>
+              <option value="dipilih">Deal</option>
               <option value="dibatalkan">Dibatalkan</option>
             </select>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-ink">Nilai Kontrak / Penawaran (Rp)</label>
+              <label className="block text-sm font-semibold text-ink">Harga (Rp)</label>
               <input
                 type="text"
                 placeholder="Contoh: 25.000.000"
@@ -187,7 +187,7 @@ export function VendorModal({ isOpen, onClose, categories, onSubmit }: VendorMod
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-ink">Kontak / No. WhatsApp</label>
+              <label className="block text-sm font-semibold text-ink">Kontak / WhatsApp</label>
               <input
                 type="text"
                 placeholder="Contoh: 0812-3456-7890 (Mbak Rini)"
@@ -199,7 +199,7 @@ export function VendorModal({ isOpen, onClose, categories, onSubmit }: VendorMod
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-ink">Ruang Lingkup Layanan (Opsional)</label>
+            <label className="block text-sm font-semibold text-ink">Yang didapat dari vendor (opsional)</label>
             <input
               type="text"
               placeholder="Contoh: Prasmanan 500 porsi + 3 stall makanan pondokan"
@@ -210,7 +210,7 @@ export function VendorModal({ isOpen, onClose, categories, onSubmit }: VendorMod
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-ink">Catatan Khusus (Opsional)</label>
+            <label className="block text-sm font-semibold text-ink">Catatan (opsional)</label>
             <textarea
               rows={2}
               placeholder="Contoh: Termasuk bonus test food untuk 4 orang"

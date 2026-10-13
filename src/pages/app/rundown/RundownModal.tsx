@@ -82,7 +82,7 @@ export function RundownModal({ isOpen, onClose, weddingDateStr, onSubmit }: Rund
           <X className="size-5" />
         </button>
 
-        <h3 className="font-display text-xl font-bold text-ink">Tambah Sesi Rundown Acara</h3>
+        <h3 className="font-display text-xl font-bold text-ink">Tambah sesi acara</h3>
         <p className="mt-1 text-xs text-ink-muted">
           Susun alur jadwal acara per sesi, jam pelaksanaan, penanggung jawab (PIC), dan lokasinya.
         </p>
@@ -95,7 +95,7 @@ export function RundownModal({ isOpen, onClose, weddingDateStr, onSubmit }: Rund
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-ink">Nama Sesi Acara</label>
+            <label className="block text-sm font-semibold text-ink">Nama sesi</label>
             <input
               type="text"
               required
@@ -108,7 +108,7 @@ export function RundownModal({ isOpen, onClose, weddingDateStr, onSubmit }: Rund
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-ink">Jam Mulai (WIB)</label>
+              <label className="block text-sm font-semibold text-ink">Jam mulai</label>
               <input
                 type="time"
                 value={startTime}
@@ -118,7 +118,7 @@ export function RundownModal({ isOpen, onClose, weddingDateStr, onSubmit }: Rund
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-ink">Jam Selesai (WIB)</label>
+              <label className="block text-sm font-semibold text-ink">Jam selesai</label>
               <input
                 type="time"
                 value={endTime}
@@ -130,7 +130,7 @@ export function RundownModal({ isOpen, onClose, weddingDateStr, onSubmit }: Rund
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-ink">Lokasi / Ruangan</label>
+              <label className="block text-sm font-semibold text-ink">Lokasi</label>
               <input
                 type="text"
                 placeholder="Contoh: Main Ballroom"
@@ -141,7 +141,7 @@ export function RundownModal({ isOpen, onClose, weddingDateStr, onSubmit }: Rund
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-ink">PIC / Koordinator</label>
+              <label className="block text-sm font-semibold text-ink">PIC (penanggung jawab)</label>
               <input
                 type="text"
                 placeholder="Contoh: MC & Tim WO"
@@ -153,7 +153,7 @@ export function RundownModal({ isOpen, onClose, weddingDateStr, onSubmit }: Rund
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-ink">Catatan / Detail Kegiatan (Opsional)</label>
+            <label className="block text-sm font-semibold text-ink">Catatan (opsional)</label>
             <textarea
               rows={2}
               placeholder="Contoh: Pengantin masuk diiringi musik gamelan/lagu romantis"

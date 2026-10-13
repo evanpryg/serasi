@@ -37,6 +37,8 @@ export type BudgetData = {
   categories: BudgetCategory[]
   expenses: Expense[]
   payments: Payment[]
+  /** Dibutuhkan calculateFinance agar kontrak vendor & jadwal bayar tidak dihitung ganda. */
+  vendors: WeddingVendor[]
 }
 
 export function useBudgetData(weddingId: string) {
@@ -46,18 +48,19 @@ export function useBudgetData(weddingId: string) {
     const demo = getCurrentDemoAccount()
     if (demo) {
       const { categories, expenses, payments } = getDemoBudget(demo.id)
-      setState({ status: 'ready', data: { categories, expenses, payments } })
+      setState({ status: 'ready', data: { categories, expenses, payments, vendors: getDemoVendors(demo.id) } })
       return
     }
 
     const client = db()
-    const [cats, exps, pays] = await Promise.all([
+    const [cats, exps, pays, vends] = await Promise.all([
       client.from('budget_categories').select('*').eq('wedding_id', weddingId).order('sort_order'),
       client.from('expenses').select('*').eq('wedding_id', weddingId).order('expense_date', { ascending: false }),
       client.from('payments').select('*').eq('wedding_id', weddingId).order('due_date', { ascending: true }),
+      client.from('wedding_vendors').select('*').eq('wedding_id', weddingId),
     ])
 
-    if (cats.error || exps.error || pays.error) {
+    if (cats.error || exps.error || pays.error || vends.error) {
       setState({ status: 'error' })
       return
     }
@@ -68,6 +71,7 @@ export function useBudgetData(weddingId: string) {
         categories: cats.data ?? [],
         expenses: exps.data ?? [],
         payments: pays.data ?? [],
+        vendors: vends.data ?? [],
       },
     })
   }, [weddingId])

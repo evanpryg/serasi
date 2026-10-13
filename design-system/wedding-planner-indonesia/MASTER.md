@@ -71,6 +71,16 @@ pada avatar, huruf tipe kepribadian, gelembung jawaban deep talk, dan cincin log
   "Lainnya" membuka sheet berisi Vendor, Tamu, Rundown, Pengaturan, Keluar.
 - Target sentuh minimal 44×44px.
 
+## Pola halaman perencanaan (Budget, Vendor, Checklist, Tamu, Rundown)
+Komponen di `src/components/ui/PageKit.tsx`. Urutan tetap supaya pengguna tidak perlu belajar ulang:
+1. `PageHeader`: judul + satu kalimat "halaman ini untuk apa" + satu aksi utama.
+2. `HowTo`: panduan 3 langkah, bisa disembunyikan (tersimpan per browser).
+3. Satu kartu ringkasan berisi angka terpenting (`Stat`), memakai bahasa sehari-hari ("Sudah dibayar", "Belum jawab").
+4. Filter `ChipGroup` (membungkus, ada jumlah) + `SearchInput` berlabel.
+5. Daftar berbentuk kartu/baris, bukan tabel lebar (aman di 375px). Aksi selalu terlihat (bukan hanya saat hover).
+6. Hapus selalu lewat `ConfirmDialog` (bukan `window.confirm`); aksi langka/berbahaya di bagian bawah halaman.
+- Angka keuangan di halaman mana pun memakai `calculateFinance` (lib/finance) agar sama dengan Dashboard.
+
 ## Format lokal
 - Rupiah: `Rp 12.500.000` (Intl `id-ID`, tanpa desimal). Singkat: `Rp 12,5 jt`.
 - Tanggal: `13 Oktober 2026`; singkat `13 Okt 2026`.

@@ -83,7 +83,7 @@ export function GuestModal({ isOpen, onClose, existingGroups, onSubmit }: GuestM
           <X className="size-5" />
         </button>
 
-        <h3 className="font-display text-xl font-bold text-ink">Tambah Tamu Undangan</h3>
+        <h3 className="font-display text-xl font-bold text-ink">Tambah tamu</h3>
         <p className="mt-1 text-xs text-ink-muted">
           Catat nama tamu, kelompok keluarga/teman, dan perkiraan jumlah kursi (pax).
         </p>
@@ -96,7 +96,7 @@ export function GuestModal({ isOpen, onClose, existingGroups, onSubmit }: GuestM
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-ink">Nama Tamu / Kepala Keluarga</label>
+            <label className="block text-sm font-semibold text-ink">Nama tamu</label>
             <input
               type="text"
               required
@@ -109,7 +109,7 @@ export function GuestModal({ isOpen, onClose, existingGroups, onSubmit }: GuestM
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-ink">Kelompok / Grup</label>
+              <label className="block text-sm font-semibold text-ink">Kelompok</label>
               {!isCustomGroup ? (
                 <select
                   value={group}
@@ -151,7 +151,7 @@ export function GuestModal({ isOpen, onClose, existingGroups, onSubmit }: GuestM
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-ink">Jumlah Undangan (Pax)</label>
+              <label className="block text-sm font-semibold text-ink">Berapa orang yang datang?</label>
               <input
                 type="number"
                 min={1}
@@ -164,7 +164,7 @@ export function GuestModal({ isOpen, onClose, existingGroups, onSubmit }: GuestM
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-ink">Nomor Kontak / WhatsApp / Meja (Opsional)</label>
+            <label className="block text-sm font-semibold text-ink">Catatan, misalnya no. WA atau meja (opsional)</label>
             <input
               type="text"
               placeholder="Contoh: 0812-9999-8888 (Meja VIP A)"

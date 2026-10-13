@@ -1,44 +1,56 @@
 import { useState } from 'react'
-import {
-  CheckCircle2,
-  Clock,
-  DollarSign,
-  Plus,
-  Trash2,
-  Wallet,
-} from 'lucide-react'
+import { AlertTriangle, CalendarClock, CheckCircle2, Plus, ReceiptText, Trash2, Wallet } from 'lucide-react'
 import { useWedding } from '@/auth/WorkspaceProvider'
 import { useBudgetData } from '@/hooks/usePlanningData'
-import { Card, CardHeader, Badge, ProgressBar } from '@/components/ui/Card'
+import { Card, Badge, ProgressBar } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { ErrorState, Skeleton } from '@/components/ui/Feedback'
-import { formatDate, formatRupiah, formatRupiahShort } from '@/lib/format'
-import { percent } from '@/lib/finance'
-import { getCurrentDemoAccount } from '@/lib/demoData'
+import { EmptyState, ErrorState, Skeleton } from '@/components/ui/Feedback'
+import { ChipGroup, ConfirmDialog, HowTo, IconButton, PageHeader, Stat, useConfirm } from '@/components/ui/PageKit'
+import { m } from '@/components/motion'
+import { cn } from '@/lib/cn'
+import { formatDate, formatRupiah, relativeDueLabel } from '@/lib/format'
+import { calculateFinance } from '@/lib/finance'
+import type { Expense, PaymentType } from '@/lib/database.types'
 import { ExpenseModal } from './budget/ExpenseModal'
 import { CategoryModal } from './budget/CategoryModal'
+
+type Tab = 'categories' | 'expenses' | 'payments'
+
+const PAYMENT_TYPE: Record<PaymentType, string> = {
+  dp: 'DP',
+  termin: 'Cicilan',
+  pelunasan: 'Pelunasan',
+  lainnya: 'Pembayaran',
+}
+
+const EXPENSE_STATUS: Record<Expense['status'], { label: string; tone: 'success' | 'warning' | 'neutral' }> = {
+  paid: { label: 'Sudah dibayar', tone: 'success' },
+  planned: { label: 'Belum dibayar', tone: 'warning' },
+  cancelled: { label: 'Batal', tone: 'neutral' },
+}
+
+function ratio(part: number, whole: number) {
+  return whole > 0 ? part / whole : 0
+}
 
 export function BudgetPage() {
   const wedding = useWedding()
   const { state, reload, createExpense, deleteExpense, createCategory } = useBudgetData(wedding.id)
-  const isDemo = Boolean(getCurrentDemoAccount())
-  const [activeTab, setActiveTab] = useState<'categories' | 'expenses' | 'payments'>('categories')
+  const [tab, setTab] = useState<Tab>('categories')
   const [showExpenseModal, setShowExpenseModal] = useState(false)
   const [showCategoryModal, setShowCategoryModal] = useState(false)
+  const confirm = useConfirm<Expense>()
 
   if (state.status === 'loading') {
     return (
       <div className="space-y-6">
-        <header>
-          <Skeleton className="h-10 w-48" />
-          <Skeleton className="mt-2 h-5 w-80" />
-        </header>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-28 rounded-2xl" />
+        <Skeleton className="h-12 w-56" />
+        <Skeleton className="h-44 rounded-card" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[...Array(3)].map((_, i) => (
+            <Skeleton key={i} className="h-36 rounded-card" />
           ))}
         </div>
-        <Skeleton className="h-96 rounded-2xl" />
       </div>
     )
   }
@@ -48,338 +60,323 @@ export function BudgetPage() {
   }
 
   const { categories, expenses, payments } = state.data
+  // Rumus resmi (lib/finance) — sama dengan Dashboard, tanpa hitung ganda kontrak vs jadwal bayar.
+  const fin = calculateFinance({ wedding, ...state.data })
+  const total = fin.totalBudget > 0 ? fin.totalBudget : fin.budgetTarget
+  const remaining = total - fin.actualSpent
+  const paid = fin.actualSpent
+  const upcoming = fin.outstandingBills + fin.plannedExpenses
+  const used = paid + upcoming
+  const over = remaining < 0
+  const shortfall = fin.unallocatedFunds < 0 ? -fin.unallocatedFunds : 0
+  const catSummary = new Map(fin.categories.map((c) => [c.id, c]))
 
-  // Perhitungan Keuangan
-  const totalPaidExpenses = expenses.filter((e) => e.status === 'paid').reduce((sum, e) => sum + e.amount, 0)
-  const totalPaidPayments = payments.filter((p) => p.status === 'paid').reduce((sum, p) => sum + p.amount, 0)
-  const totalRealized = totalPaidExpenses + totalPaidPayments
-  const totalScheduledPayments = payments.filter((p) => p.status === 'scheduled').reduce((sum, p) => sum + p.amount, 0)
-  const totalCommitted = totalRealized + totalScheduledPayments
-  const remainingBudget = Math.max(0, wedding.budget_target - totalCommitted)
-  const budgetUsagePercent = percent(totalCommitted, wedding.budget_target)
+  const scheduledPayments = payments.filter((p) => p.status === 'scheduled').sort((a, b) => (a.due_date ?? '').localeCompare(b.due_date ?? ''))
+  const settledPayments = payments.filter((p) => p.status !== 'scheduled')
 
   return (
     <div className="space-y-6 lg:space-y-8">
-      {/* Header */}
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="font-display text-[2.4rem] font-semibold leading-tight sm:text-5xl">Anggaran Pernikahan</h1>
-            {isDemo && (
-              <Badge tone="gold" className="self-center">
-                Akun Demo Interaktif
-              </Badge>
-            )}
-          </div>
-          <p className="mt-1 text-ink-muted">
-            Kelola alokasi pos anggaran, pantau pengeluaran riil, dan jadwal pembayaran termin vendor.
-          </p>
-        </div>
+      <PageHeader
+        title="Anggaran"
+        description="Bagi uang pernikahan ke beberapa pos, lalu catat setiap uang yang keluar supaya tahu sisanya."
+        actions={
+          <>
+            <Button variant="secondary" onClick={() => setShowCategoryModal(true)} icon={<Plus className="size-4" aria-hidden />}>
+              Tambah pos
+            </Button>
+            <Button onClick={() => setShowExpenseModal(true)} icon={<Plus className="size-4" aria-hidden />}>
+              Catat pengeluaran
+            </Button>
+          </>
+        }
+      />
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          <Button
-            variant="secondary"
-            onClick={() => setShowCategoryModal(true)}
-            icon={<Plus className="size-4" />}
-          >
-            Tambah Pos Kategori
-          </Button>
-          <Button
-            onClick={() => setShowExpenseModal(true)}
-            icon={<Plus className="size-4" />}
-          >
-            Catat Pengeluaran
-          </Button>
-        </div>
-      </header>
+      <HowTo
+        id="budget"
+        steps={[
+          <>Buat <strong className="text-ink">pos anggaran</strong> untuk tiap kebutuhan, misalnya Katering Rp 60 jt.</>,
+          <>Setiap ada uang keluar, tekan <strong className="text-ink">Catat pengeluaran</strong> dan pilih posnya.</>,
+          <>Lihat <strong className="text-ink">sisa anggaran</strong> di bawah. Warna merah berarti sudah melebihi jatah.</>,
+        ]}
+      />
 
-      {/* Ringkasan Finansial Card Grid */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Target Anggaran */}
-        <Card className="relative overflow-hidden p-5">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-ink-muted">Target Anggaran</span>
-            <div className="flex size-9 items-center justify-center rounded-xl bg-primary-soft text-primary">
-              <DollarSign className="size-5" />
-            </div>
-          </div>
-          <p className="mt-3 font-display text-2xl font-bold text-ink">{formatRupiah(wedding.budget_target)}</p>
-          <p className="mt-1 text-xs text-ink-subtle">
-            Dana tersedia: <strong className="text-ink">{formatRupiah(wedding.available_funds)}</strong>
-          </p>
-        </Card>
-
-        {/* Sudah Dibayarkan / Realisasi */}
-        <Card className="relative overflow-hidden p-5">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-ink-muted">Sudah Dibayar</span>
-            <div className="flex size-9 items-center justify-center rounded-xl bg-success-soft text-success">
-              <CheckCircle2 className="size-5" />
-            </div>
-          </div>
-          <p className="mt-3 font-display text-2xl font-bold text-success">{formatRupiah(totalRealized)}</p>
-          <p className="mt-1 text-xs text-ink-subtle">
-            {expenses.filter((e) => e.status === 'paid').length} pengeluaran + {payments.filter((p) => p.status === 'paid').length} termin vendor
-          </p>
-        </Card>
-
-        {/* Komitmen Berjalan (Termasuk Terjadwal) */}
-        <Card className="relative overflow-hidden p-5">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-ink-muted">Total Terpakai & Komitmen</span>
-            <div className="flex size-9 items-center justify-center rounded-xl bg-gold-soft text-gold-text">
-              <Clock className="size-5" />
-            </div>
-          </div>
-          <p className="mt-3 font-display text-2xl font-bold text-ink">{formatRupiah(totalCommitted)}</p>
-          <p className="mt-1 text-xs text-ink-subtle">
-            Terjadwal: <strong className="text-ink">{formatRupiah(totalScheduledPayments)}</strong>
-          </p>
-        </Card>
-
-        {/* Sisa Anggaran */}
-        <Card className="relative overflow-hidden p-5">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-ink-muted">Sisa Anggaran Aman</span>
-            <div className="flex size-9 items-center justify-center rounded-xl bg-surface-muted text-ink-muted">
-              <Wallet className="size-5" />
-            </div>
-          </div>
-          <p className="mt-3 font-display text-2xl font-bold text-ink">{formatRupiah(remainingBudget)}</p>
-          <p className="mt-1 text-xs text-ink-subtle">{100 - budgetUsagePercent}% sisa kuota anggaran</p>
-        </Card>
-      </div>
-
-      {/* Progress Bar Anggaran */}
+      {/* Ringkasan: satu angka utama + bar bertumpuk */}
       <Card className="p-5 sm:p-6">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="font-semibold text-ink">Realisasi & Komitmen Terhadap Target</p>
-            <p className="text-sm text-ink-muted">
-              {formatRupiah(totalCommitted)} dari {formatRupiah(wedding.budget_target)} ({budgetUsagePercent}%)
+            <p className="text-sm text-ink-muted">{over ? 'Anggaran terlampaui' : 'Sisa anggaran (belum dibayarkan)'}</p>
+            <p className={cn('font-display text-4xl font-bold tabular sm:text-5xl', over ? 'text-danger' : 'text-ink')}>
+              {over && '−'}
+              {formatRupiah(Math.abs(remaining))}
             </p>
           </div>
-          <Badge tone={budgetUsagePercent > 95 ? 'danger' : budgetUsagePercent > 80 ? 'warning' : 'primary'}>
-            {budgetUsagePercent > 100 ? 'Melebihi Target' : `${budgetUsagePercent}% Terpakai`}
-          </Badge>
+          <p className="text-sm text-ink-muted">
+            dari total anggaran <strong className="text-ink tabular">{formatRupiah(total)}</strong>
+          </p>
         </div>
-        <div className="mt-4">
-          <ProgressBar value={Math.min(100, budgetUsagePercent)} label="Persentase Anggaran" tone={budgetUsagePercent > 95 ? 'danger' : 'primary'} />
+
+        <div
+          role="img"
+          aria-label={`Sudah dibayar ${formatRupiah(paid)}, akan dibayar ${formatRupiah(upcoming)}, dari total ${formatRupiah(total)}`}
+          className="relative mt-5 h-3 overflow-hidden rounded-full bg-surface-muted"
+        >
+          <m.div
+            className={cn('absolute inset-y-0 left-0 w-full origin-left rounded-full', over ? 'bg-danger/40' : 'bg-gold')}
+            initial={{ scaleX: 0 }}
+            animate={{ scaleX: Math.min(1, ratio(used, total)) }}
+            transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+          />
+          <m.div
+            className={cn('absolute inset-y-0 left-0 w-full origin-left rounded-full', over ? 'bg-danger' : 'bg-primary')}
+            initial={{ scaleX: 0 }}
+            animate={{ scaleX: Math.min(1, ratio(paid, total)) }}
+            transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+          />
         </div>
+
+        {!over && used > total && (
+          <p className="mt-3 flex items-start gap-2 text-sm text-warning">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
+            Jika semua tagihan dibayar, anggaran akan lebih {formatRupiah(used - total)}.
+          </p>
+        )}
+
+        <dl className="mt-5 grid gap-4 border-t border-border pt-4 sm:grid-cols-3">
+          <Stat
+            label="Sudah dibayar"
+            icon={<span className="size-2.5 rounded-full bg-primary" aria-hidden />}
+            value={formatRupiah(paid)}
+            hint="Uang yang benar-benar sudah keluar"
+          />
+          <Stat
+            label="Akan dibayar"
+            icon={<span className="size-2.5 rounded-full bg-gold" aria-hidden />}
+            value={formatRupiah(upcoming)}
+            hint="Sisa tagihan vendor & pengeluaran rencana"
+          />
+          <Stat
+            label="Uang yang masih ada"
+            icon={<Wallet className="size-3.5" aria-hidden />}
+            value={formatRupiah(fin.cashOnHand)}
+            hint={
+              shortfall > 0 ? (
+                <span className="text-warning">Kurang {formatRupiah(shortfall)} untuk melunasi semua tagihan</span>
+              ) : (
+                'Cukup untuk semua tagihan yang akan datang'
+              )
+            }
+          />
+        </dl>
       </Card>
 
-      {/* Tab Navigation */}
-      <div className="flex border-b border-border">
-        <button
-          type="button"
-          onClick={() => setActiveTab('categories')}
-          className={`cursor-pointer border-b-2 px-5 py-3 text-sm font-semibold transition-colors ${
-            activeTab === 'categories' ? 'border-primary text-primary' : 'border-transparent text-ink-muted hover:text-ink'
-          }`}
-        >
-          Kategori Anggaran ({categories.length})
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('expenses')}
-          className={`cursor-pointer border-b-2 px-5 py-3 text-sm font-semibold transition-colors ${
-            activeTab === 'expenses' ? 'border-primary text-primary' : 'border-transparent text-ink-muted hover:text-ink'
-          }`}
-        >
-          Pengeluaran Langsung ({expenses.length})
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('payments')}
-          className={`cursor-pointer border-b-2 px-5 py-3 text-sm font-semibold transition-colors ${
-            activeTab === 'payments' ? 'border-primary text-primary' : 'border-transparent text-ink-muted hover:text-ink'
-          }`}
-        >
-          Termin Pembayaran Vendor ({payments.length})
-        </button>
-      </div>
+      <ChipGroup<Tab>
+        label="Pilih tampilan"
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: 'categories', label: 'Pos anggaran', count: categories.length },
+          { value: 'expenses', label: 'Pengeluaran', count: expenses.length },
+          { value: 'payments', label: 'Jadwal bayar vendor', count: payments.length },
+        ]}
+      />
 
-      {/* Tab 1: Kategori Anggaran */}
-      {activeTab === 'categories' && (
-        <div className="space-y-4">
+      {tab === 'categories' &&
+        (categories.length === 0 ? (
+          <EmptyState
+            icon={<Wallet className="size-7" aria-hidden />}
+            title="Belum ada pos anggaran"
+            description="Pos anggaran adalah jatah uang untuk tiap kebutuhan, misalnya venue, katering, atau busana."
+            action={
+              <Button onClick={() => setShowCategoryModal(true)} icon={<Plus className="size-4" aria-hidden />}>
+                Tambah pos pertama
+              </Button>
+            }
+          />
+        ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {categories.map((cat) => {
-              // Hitung pengeluaran terkait kategori ini
-              const catExpenses = expenses
-                .filter((e) => e.category_id === cat.id && e.status === 'paid')
-                .reduce((s, e) => s + e.amount, 0)
-              const catPercent = percent(catExpenses, cat.planned_amount)
-
+              const sum = catSummary.get(cat.id)
+              const spent = sum?.actual ?? 0
+              const pending = (sum?.committed ?? 0) - spent
+              const left = cat.planned_amount - (sum?.committed ?? 0)
+              const pct = Math.round(ratio(sum?.committed ?? 0, cat.planned_amount) * 100)
+              const status =
+                left < 0
+                  ? { label: 'Melebihi jatah', tone: 'danger' as const }
+                  : pct >= 80
+                    ? { label: 'Hampir habis', tone: 'warning' as const }
+                    : { label: 'Aman', tone: 'success' as const }
               return (
-                <Card key={cat.id} className="flex flex-col justify-between p-5">
-                  <div>
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="font-semibold text-ink">{cat.name}</h3>
-                      {cat.is_reserve ? (
-                        <Badge tone="gold">Dana Cadangan</Badge>
-                      ) : (
-                        <span className="text-xs font-semibold text-ink-muted">{catPercent}%</span>
-                      )}
-                    </div>
-                    {cat.notes && <p className="mt-1 text-xs text-ink-muted line-clamp-2">{cat.notes}</p>}
+                <Card key={cat.id} className="flex flex-col p-5">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-semibold text-ink">{cat.name}</h3>
+                    {cat.is_reserve ? <Badge tone="gold">Dana cadangan</Badge> : <Badge tone={status.tone}>{status.label}</Badge>}
                   </div>
-
-                  <div className="mt-5 space-y-2">
-                    <div className="flex justify-between text-xs text-ink-subtle">
-                      <span>Terpakai: {formatRupiahShort(catExpenses)}</span>
-                      <span>Rencana: {formatRupiahShort(cat.planned_amount)}</span>
+                  {cat.notes && <p className="mt-1 line-clamp-2 text-sm text-ink-muted">{cat.notes}</p>}
+                  <div className="mt-auto pt-5">
+                    <p className="text-sm text-ink-muted">
+                      <strong className="text-ink tabular">{formatRupiah(spent)}</strong> dibayar dari{' '}
+                      <span className="tabular">{formatRupiah(cat.planned_amount)}</span>
+                    </p>
+                    {pending > 0 && <p className="text-xs text-ink-subtle tabular">+ {formatRupiah(pending)} akan dibayar</p>}
+                    <div className="mt-2">
+                      <ProgressBar value={Math.min(100, pct)} label={`Pemakaian ${cat.name}`} tone={left < 0 ? 'danger' : 'primary'} />
                     </div>
-                    <ProgressBar value={Math.min(100, catPercent)} label={cat.name} tone={catPercent > 100 ? 'danger' : 'primary'} />
-                    <div className="flex justify-between pt-1 text-xs">
-                      <span className="text-ink-muted">Sisa Kuota:</span>
-                      <span className={`font-semibold ${cat.planned_amount - catExpenses < 0 ? 'text-danger' : 'text-ink'}`}>
-                        {formatRupiah(cat.planned_amount - catExpenses)}
-                      </span>
-                    </div>
+                    <p className={cn('mt-2 flex items-center gap-1 text-sm font-semibold tabular', left < 0 ? 'text-danger' : 'text-ink')}>
+                      {left < 0 && <AlertTriangle className="size-4" aria-hidden />}
+                      {left < 0 ? `Lebih ${formatRupiah(-left)}` : `Sisa ${formatRupiah(left)}`}
+                    </p>
                   </div>
                 </Card>
               )
             })}
           </div>
-        </div>
-      )}
+        ))}
 
-      {/* Tab 2: Pengeluaran Langsung */}
-      {activeTab === 'expenses' && (
-        <Card className="overflow-hidden">
-          <CardHeader
-            title="Daftar Pengeluaran Riil"
-            description="Mencatat semua pengeluaran langsung dan DP yang sudah dibayar."
+      {tab === 'expenses' &&
+        (expenses.length === 0 ? (
+          <EmptyState
+            icon={<ReceiptText className="size-7" aria-hidden />}
+            title="Belum ada pengeluaran"
+            description="Catat setiap pembayaran, misalnya DP gedung atau beli seserahan, supaya sisa anggaran selalu akurat."
+            action={
+              <Button onClick={() => setShowExpenseModal(true)} icon={<Plus className="size-4" aria-hidden />}>
+                Catat pengeluaran
+              </Button>
+            }
           />
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-border bg-surface-muted/50 text-xs font-semibold uppercase text-ink-muted">
-                <tr>
-                  <th className="px-5 py-3.5">Transaksi</th>
-                  <th className="px-5 py-3.5">Kategori</th>
-                  <th className="px-5 py-3.5">Tanggal</th>
-                  <th className="px-5 py-3.5">Sumber Dana</th>
-                  <th className="px-5 py-3.5 text-right">Nominal</th>
-                  <th className="px-5 py-3.5 text-center">Status</th>
-                  <th className="px-5 py-3.5 text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {expenses.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="py-8 text-center text-ink-muted">
-                      Belum ada transaksi pengeluaran.
-                    </td>
-                  </tr>
-                ) : (
-                  expenses.map((exp) => {
-                    const cat = categories.find((c) => c.id === exp.category_id)
-                    return (
-                      <tr key={exp.id} className="transition-colors hover:bg-surface-muted/30">
-                        <td className="px-5 py-4">
-                          <p className="font-semibold text-ink">{exp.title}</p>
-                          {exp.notes && <p className="text-xs text-ink-muted">{exp.notes}</p>}
-                        </td>
-                        <td className="px-5 py-4 text-ink-muted">{cat?.name ?? 'Umum'}</td>
-                        <td className="px-5 py-4 text-ink-muted">{exp.expense_date ? formatDate(exp.expense_date) : '—'}</td>
-                        <td className="px-5 py-4 text-ink-muted">{exp.fund_source ?? '—'}</td>
-                        <td className="px-5 py-4 text-right font-semibold text-ink tabular">{formatRupiah(exp.amount)}</td>
-                        <td className="px-5 py-4 text-center">
-                          <Badge tone={exp.status === 'paid' ? 'success' : exp.status === 'planned' ? 'warning' : 'neutral'}>
-                            {exp.status === 'paid' ? 'Lunas' : exp.status === 'planned' ? 'Rencana' : 'Batal'}
-                          </Badge>
-                        </td>
-                        <td className="px-5 py-4 text-right">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (confirm(`Hapus pengeluaran "${exp.title}"?`)) {
-                                void deleteExpense(exp.id)
-                              }
-                            }}
-                            className="inline-flex size-8 cursor-pointer items-center justify-center rounded-lg text-ink-subtle hover:bg-danger-soft hover:text-danger transition-colors"
-                            title="Hapus Pengeluaran"
-                          >
-                            <Trash2 className="size-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    )
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      )}
+        ) : (
+          <Card className="overflow-hidden">
+            <ul className="divide-y divide-border">
+              {expenses.map((exp) => {
+                const cat = categories.find((c) => c.id === exp.category_id)
+                const st = EXPENSE_STATUS[exp.status]
+                return (
+                  <li key={exp.id} className="flex items-start gap-3 p-4 sm:items-center sm:px-6">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-ink">{exp.title}</p>
+                      <p className="mt-0.5 text-sm text-ink-muted">
+                        {[cat?.name ?? 'Tanpa pos', exp.expense_date && formatDate(exp.expense_date), exp.fund_source].filter(Boolean).join(' · ')}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-3">
+                      <span className="font-semibold text-ink tabular">{formatRupiah(exp.amount)}</span>
+                      <Badge tone={st.tone}>{st.label}</Badge>
+                    </div>
+                    <IconButton label={`Hapus ${exp.title}`} tone="danger" onClick={() => confirm.ask(exp)}>
+                      <Trash2 className="size-4" aria-hidden />
+                    </IconButton>
+                  </li>
+                )
+              })}
+            </ul>
+          </Card>
+        ))}
 
-      {/* Tab 3: Pembayaran Termin Vendor */}
-      {activeTab === 'payments' && (
-        <Card className="overflow-hidden">
-          <CardHeader
-            title="Jadwal Termin Pembayaran Vendor"
-            description="Daftar kewajiban DP, termin berkala, dan pelunasan vendor."
+      {tab === 'payments' &&
+        (payments.length === 0 ? (
+          <EmptyState
+            icon={<CalendarClock className="size-7" aria-hidden />}
+            title="Belum ada jadwal bayar vendor"
+            description="DP, cicilan, dan pelunasan vendor akan muncul di sini beserta tanggal jatuh temponya."
           />
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-border bg-surface-muted/50 text-xs font-semibold uppercase text-ink-muted">
-                <tr>
-                  <th className="px-5 py-3.5">Keterangan</th>
-                  <th className="px-5 py-3.5">Tipe</th>
-                  <th className="px-5 py-3.5">Jatuh Tempo</th>
-                  <th className="px-5 py-3.5">Sumber Dana</th>
-                  <th className="px-5 py-3.5 text-right">Nominal</th>
-                  <th className="px-5 py-3.5 text-center">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {payments.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-8 text-center text-ink-muted">
-                      Belum ada jadwal pembayaran vendor.
-                    </td>
-                  </tr>
-                ) : (
-                  payments.map((p) => (
-                    <tr key={p.id} className="transition-colors hover:bg-surface-muted/30">
-                      <td className="px-5 py-4">
-                        <p className="font-semibold text-ink">{p.notes ?? 'Pembayaran Vendor'}</p>
-                      </td>
-                      <td className="px-5 py-4 uppercase text-xs font-semibold text-ink-muted">{p.payment_type}</td>
-                      <td className="px-5 py-4 text-ink-muted">{p.due_date ? formatDate(p.due_date) : '—'}</td>
-                      <td className="px-5 py-4 text-ink-muted">{p.fund_source ?? 'Tabungan Bersama'}</td>
-                      <td className="px-5 py-4 text-right font-semibold text-ink tabular">{formatRupiah(p.amount)}</td>
-                      <td className="px-5 py-4 text-center">
-                        <Badge tone={p.status === 'paid' ? 'success' : p.status === 'scheduled' ? 'warning' : 'danger'}>
-                          {p.status === 'paid' ? 'Lunas' : p.status === 'scheduled' ? 'Terjadwal' : 'Dibatalkan'}
+        ) : (
+          <div className="space-y-6">
+            <PaymentGroup title="Belum dibayar" empty="Tidak ada tagihan yang menunggu. Semua sudah beres.">
+              {scheduledPayments.map((p) => {
+                const late = p.due_date ? relativeDueLabel(p.due_date).startsWith('Terlambat') : false
+                return (
+                  <PaymentRow
+                    key={p.id}
+                    title={p.notes ?? 'Pembayaran vendor'}
+                    type={PAYMENT_TYPE[p.payment_type]}
+                    amount={p.amount}
+                    meta={p.due_date ? `Jatuh tempo ${formatDate(p.due_date)}` : 'Tanggal belum ditentukan'}
+                    badge={
+                      p.due_date ? (
+                        <Badge tone={late ? 'danger' : 'warning'}>
+                          <CalendarClock className="size-3" aria-hidden />
+                          {relativeDueLabel(p.due_date)}
                         </Badge>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                      ) : null
+                    }
+                  />
+                )
+              })}
+            </PaymentGroup>
+            {settledPayments.length > 0 && (
+              <PaymentGroup title="Sudah selesai">
+                {settledPayments.map((p) => (
+                  <PaymentRow
+                    key={p.id}
+                    title={p.notes ?? 'Pembayaran vendor'}
+                    type={PAYMENT_TYPE[p.payment_type]}
+                    amount={p.amount}
+                    meta={p.payment_date ? `Dibayar ${formatDate(p.payment_date)}` : p.fund_source ?? ''}
+                    badge={
+                      p.status === 'paid' ? (
+                        <Badge tone="success">
+                          <CheckCircle2 className="size-3" aria-hidden />
+                          Lunas
+                        </Badge>
+                      ) : (
+                        <Badge>Dibatalkan</Badge>
+                      )
+                    }
+                  />
+                ))}
+              </PaymentGroup>
+            )}
           </div>
-        </Card>
-      )}
+        ))}
 
-      {/* Modals */}
-      <ExpenseModal
-        isOpen={showExpenseModal}
-        onClose={() => setShowExpenseModal(false)}
-        categories={categories}
-        onSubmit={async (data) => {
-          await createExpense(data)
-        }}
-      />
-
-      <CategoryModal
-        isOpen={showCategoryModal}
-        onClose={() => setShowCategoryModal(false)}
-        onSubmit={async (data) => {
-          await createCategory(data)
-        }}
+      <ExpenseModal isOpen={showExpenseModal} onClose={() => setShowExpenseModal(false)} categories={categories} onSubmit={createExpense} />
+      <CategoryModal isOpen={showCategoryModal} onClose={() => setShowCategoryModal(false)} onSubmit={createCategory} />
+      <ConfirmDialog
+        open={confirm.target != null}
+        title="Hapus pengeluaran ini?"
+        message={
+          <>
+            <strong className="text-ink">{confirm.target?.title}</strong> ({formatRupiah(confirm.target?.amount ?? 0)}) akan dihapus dan sisa
+            anggaran dihitung ulang.
+          </>
+        }
+        onConfirm={() => (confirm.target ? deleteExpense(confirm.target.id) : undefined)}
+        onClose={confirm.close}
       />
     </div>
+  )
+}
+
+function PaymentGroup({ title, empty, children }: { title: string; empty?: string; children: React.ReactNode[] }) {
+  return (
+    <section>
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink-muted">{title}</h2>
+      {children.length === 0 ? (
+        <p className="rounded-card border border-dashed border-border-strong p-5 text-sm text-ink-muted">{empty}</p>
+      ) : (
+        <Card className="overflow-hidden">
+          <ul className="divide-y divide-border">{children}</ul>
+        </Card>
+      )}
+    </section>
+  )
+}
+
+function PaymentRow({ title, type, amount, meta, badge }: { title: string; type: string; amount: number; meta: string; badge: React.ReactNode }) {
+  return (
+    <li className="flex items-start gap-3 p-4 sm:items-center sm:px-6">
+      <div className="min-w-0 flex-1">
+        <p className="font-semibold text-ink">
+          <span className="mr-2 rounded-md bg-surface-muted px-1.5 py-0.5 text-xs font-semibold text-ink-muted">{type}</span>
+          {title}
+        </p>
+        {meta && <p className="mt-0.5 text-sm text-ink-muted">{meta}</p>}
+      </div>
+      <div className="flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-3">
+        <span className="font-semibold text-ink tabular">{formatRupiah(amount)}</span>
+        {badge}
+      </div>
+    </li>
   )
 }

@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import { Link, type LinkProps } from 'react-router'
 import { Loader2 } from 'lucide-react'
 import { cn } from '@/lib/cn'
@@ -31,7 +31,7 @@ export function buttonClass(variant: Variant = 'primary', size: Size = 'md', cla
   return cn(base, variants[variant], sizes[size], className)
 }
 
-type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+type ButtonProps = ComponentProps<'button'> & {
   variant?: Variant
   size?: Size
   loading?: boolean

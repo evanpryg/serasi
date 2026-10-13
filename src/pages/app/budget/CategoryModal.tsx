@@ -76,7 +76,7 @@ export function CategoryModal({ isOpen, onClose, onSubmit }: CategoryModalProps)
           <X className="size-5" />
         </button>
 
-        <h3 className="font-display text-xl font-bold text-ink">Tambah Pos Kategori Baru</h3>
+        <h3 className="font-display text-xl font-bold text-ink">Tambah pos anggaran</h3>
         <p className="mt-1 text-xs text-ink-muted">
           Buat pos anggaran baru untuk memisahkan alokasi dana kebutuhan pernikahan.
         </p>
@@ -89,7 +89,7 @@ export function CategoryModal({ isOpen, onClose, onSubmit }: CategoryModalProps)
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-ink">Nama Pos Kategori</label>
+            <label className="block text-sm font-semibold text-ink">Nama pos</label>
             <input
               type="text"
               required
@@ -101,7 +101,7 @@ export function CategoryModal({ isOpen, onClose, onSubmit }: CategoryModalProps)
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-ink">Rencana Alokasi Anggaran (Rp)</label>
+            <label className="block text-sm font-semibold text-ink">Jatah uang untuk pos ini (Rp)</label>
             <input
               type="text"
               required
@@ -116,7 +116,7 @@ export function CategoryModal({ isOpen, onClose, onSubmit }: CategoryModalProps)
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-ink">Catatan Pos (Opsional)</label>
+            <label className="block text-sm font-semibold text-ink">Catatan (opsional)</label>
             <textarea
               rows={2}
               placeholder="Contoh: Target 500 pcs souvenir + kemasan"
@@ -134,7 +134,7 @@ export function CategoryModal({ isOpen, onClose, onSubmit }: CategoryModalProps)
                 onChange={(e) => setIsReserve(e.target.checked)}
                 className="rounded border-border text-primary focus:ring-primary"
               />
-              Tandai sebagai Pos Dana Cadangan / Darurat
+              Ini dana cadangan untuk keperluan mendadak
             </label>
           </div>
 

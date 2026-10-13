@@ -87,7 +87,7 @@ export function ExpenseModal({ isOpen, onClose, categories, onSubmit }: ExpenseM
           <X className="size-5" />
         </button>
 
-        <h3 className="font-display text-xl font-bold text-ink">Catat Pengeluaran Baru</h3>
+        <h3 className="font-display text-xl font-bold text-ink">Catat pengeluaran</h3>
         <p className="mt-1 text-xs text-ink-muted">
           Catat transaksi riil atau pembayaran tunai/transfer untuk memperbarui realisasi dana.
         </p>
@@ -100,7 +100,7 @@ export function ExpenseModal({ isOpen, onClose, categories, onSubmit }: ExpenseM
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-ink">Nama Transaksi / Keperluan</label>
+            <label className="block text-sm font-semibold text-ink">Untuk apa?</label>
             <input
               type="text"
               required
@@ -113,7 +113,7 @@ export function ExpenseModal({ isOpen, onClose, categories, onSubmit }: ExpenseM
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-ink">Pos Kategori</label>
+              <label className="block text-sm font-semibold text-ink">Masuk ke pos</label>
               <select
                 value={categoryId}
                 onChange={(e) => setCategoryId(e.target.value)}
@@ -128,7 +128,7 @@ export function ExpenseModal({ isOpen, onClose, categories, onSubmit }: ExpenseM
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-ink">Nominal (Rp)</label>
+              <label className="block text-sm font-semibold text-ink">Jumlah (Rp)</label>
               <input
                 type="text"
                 required
@@ -145,7 +145,7 @@ export function ExpenseModal({ isOpen, onClose, categories, onSubmit }: ExpenseM
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-ink">Tanggal Pengeluaran</label>
+              <label className="block text-sm font-semibold text-ink">Tanggal</label>
               <input
                 type="date"
                 value={expenseDate}
@@ -155,7 +155,7 @@ export function ExpenseModal({ isOpen, onClose, categories, onSubmit }: ExpenseM
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-ink">Sumber Dana</label>
+              <label className="block text-sm font-semibold text-ink">Uang dari mana?</label>
               <select
                 value={fundSource}
                 onChange={(e) => setFundSource(e.target.value)}
@@ -170,7 +170,7 @@ export function ExpenseModal({ isOpen, onClose, categories, onSubmit }: ExpenseM
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-ink">Status Pembayaran</label>
+            <label className="block text-sm font-semibold text-ink">Sudah dibayar?</label>
             <div className="mt-1.5 flex gap-3">
               <label className="flex items-center gap-2 text-xs text-ink cursor-pointer">
                 <input
@@ -181,7 +181,7 @@ export function ExpenseModal({ isOpen, onClose, categories, onSubmit }: ExpenseM
                   onChange={() => setStatus('paid')}
                   className="text-primary focus:ring-primary"
                 />
-                Sudah Dibayar (Lunas)
+                Sudah dibayar
               </label>
               <label className="flex items-center gap-2 text-xs text-ink cursor-pointer">
                 <input
@@ -192,7 +192,7 @@ export function ExpenseModal({ isOpen, onClose, categories, onSubmit }: ExpenseM
                   onChange={() => setStatus('planned')}
                   className="text-primary focus:ring-primary"
                 />
-                Masih Rencana
+                Belum, baru rencana
               </label>
             </div>
           </div>

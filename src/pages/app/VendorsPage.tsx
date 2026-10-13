@@ -1,66 +1,65 @@
 import { useState } from 'react'
-import {
-  Building2,
-  CheckCircle2,
-  Clock,
-  FileText,
-  Phone,
-  Plus,
-  Search,
-  Store,
-  Trash2,
-} from 'lucide-react'
+import { ArrowRight, ChevronDown, Phone, Plus, Store, Trash2 } from 'lucide-react'
 import { useWedding } from '@/auth/WorkspaceProvider'
 import { useVendorsData } from '@/hooks/usePlanningData'
 import { Card, Badge } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { ErrorState, Skeleton } from '@/components/ui/Feedback'
+import { EmptyState, ErrorState, Skeleton } from '@/components/ui/Feedback'
+import { ChipGroup, ConfirmDialog, HowTo, IconButton, PageHeader, SearchInput, SelectFilter, Stat, useConfirm } from '@/components/ui/PageKit'
 import { formatRupiah } from '@/lib/format'
-import { getCurrentDemoAccount } from '@/lib/demoData'
+import type { WeddingVendor, WeddingVendorStatus } from '@/lib/database.types'
 import { VendorModal } from './vendors/VendorModal'
-import type { WeddingVendorStatus } from '@/lib/database.types'
 
-const STATUS_LABELS: Record<WeddingVendorStatus, { label: string; tone: 'success' | 'gold' | 'primary' | 'neutral' | 'danger' }> = {
-  dipilih: { label: 'Dipilih (Deal)', tone: 'success' },
-  dipertimbangkan: { label: 'Dipertimbangkan', tone: 'gold' },
-  dihubungi: { label: 'Sudah Dihubungi', tone: 'primary' },
-  kandidat: { label: 'Kandidat', tone: 'neutral' },
-  dibatalkan: { label: 'Dibatalkan', tone: 'danger' },
+/** Urutan alur kerja vendor, dari kiri ke kanan. */
+const FLOW: WeddingVendorStatus[] = ['kandidat', 'dihubungi', 'dipertimbangkan', 'dipilih']
+
+const STATUS: Record<WeddingVendorStatus, { label: string; tone: 'success' | 'gold' | 'primary' | 'neutral' | 'danger'; hint: string }> = {
+  kandidat: { label: 'Kandidat', tone: 'neutral', hint: 'Baru dicatat, belum dihubungi' },
+  dihubungi: { label: 'Sudah dihubungi', tone: 'primary', hint: 'Menunggu penawaran/balasan' },
+  dipertimbangkan: { label: 'Dipertimbangkan', tone: 'gold', hint: 'Sedang dibandingkan/nego' },
+  dipilih: { label: 'Deal', tone: 'success', hint: 'Sudah sepakat/kontrak' },
+  dibatalkan: { label: 'Dibatalkan', tone: 'danger', hint: 'Tidak jadi dipakai' },
+}
+
+const NEXT_STEP: Partial<Record<WeddingVendorStatus, { to: WeddingVendorStatus; label: string }>> = {
+  kandidat: { to: 'dihubungi', label: 'Tandai sudah dihubungi' },
+  dihubungi: { to: 'dipertimbangkan', label: 'Masukkan ke pertimbangan' },
+  dipertimbangkan: { to: 'dipilih', label: 'Jadikan deal' },
+  dibatalkan: { to: 'kandidat', label: 'Aktifkan lagi' },
 }
 
 const CATEGORY_NAMES: Record<string, string> = {
-  venue: 'Venue & Gedung',
+  venue: 'Venue & gedung',
   katering: 'Katering',
-  dekorasi: 'Dekorasi & Ambience',
-  foto_video: 'Foto & Video',
-  mua: 'MUA & Busana',
-  undangan: 'Undangan & Souvenir',
-  hiburan: 'Musik & Hiburan',
-  wedding_organizer: 'Wedding Organizer (WO)',
-  lainnya: 'Vendor Lainnya',
+  dekorasi: 'Dekorasi',
+  foto_video: 'Foto & video',
+  mua: 'MUA & busana',
+  undangan: 'Undangan & souvenir',
+  hiburan: 'Musik & hiburan',
+  wedding_organizer: 'Wedding organizer',
+  lainnya: 'Lainnya',
 }
+
+type Filter = 'all' | WeddingVendorStatus
 
 export function VendorsPage() {
   const wedding = useWedding()
   const { state, reload, createVendor, updateVendorStatus, deleteVendor } = useVendorsData(wedding.id)
-  const isDemo = Boolean(getCurrentDemoAccount())
-  const [selectedStatus, setSelectedStatus] = useState<string>('all')
-  const [searchQuery, setSearchQuery] = useState('')
+  const [filter, setFilter] = useState<Filter>('all')
+  const [query, setQuery] = useState('')
   const [showVendorModal, setShowVendorModal] = useState(false)
+  const confirm = useConfirm<WeddingVendor>()
 
   if (state.status === 'loading') {
     return (
       <div className="space-y-6">
-        <header>
-          <Skeleton className="h-10 w-48" />
-          <Skeleton className="mt-2 h-5 w-80" />
-        </header>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Skeleton className="h-12 w-56" />
+        <Skeleton className="h-28 rounded-card" />
+        <div className="grid gap-4 md:grid-cols-2">
           {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-28 rounded-2xl" />
+            <Skeleton key={i} className="h-52 rounded-card" />
           ))}
         </div>
-        <Skeleton className="h-96 rounded-2xl" />
       </div>
     )
   }
@@ -70,251 +69,186 @@ export function VendorsPage() {
   }
 
   const { vendors, categories } = state.data
+  const count = (s: WeddingVendorStatus) => vendors.filter((v) => v.status === s).length
+  const deals = vendors.filter((v) => v.status === 'dipilih')
+  const totalContract = deals.reduce((sum, v) => sum + (v.contract_amount ?? v.quoted_amount ?? 0), 0)
 
-  // Stats
-  const chosenVendors = vendors.filter((v) => v.status === 'dipilih')
-  const totalContract = chosenVendors.reduce((sum, v) => sum + (v.contract_amount ?? 0), 0)
-
-  // Filtered
-  const filteredVendors = vendors.filter((v) => {
-    if (selectedStatus !== 'all' && v.status !== selectedStatus) return false
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase()
-      const name = (v.custom_name ?? '').toLowerCase()
-      const scope = (v.service_scope ?? '').toLowerCase()
-      const notes = (v.notes ?? '').toLowerCase()
-      return name.includes(q) || scope.includes(q) || notes.includes(q)
-    }
-    return true
+  const q = query.trim().toLowerCase()
+  const shown = vendors.filter((v) => {
+    if (filter !== 'all' && v.status !== filter) return false
+    if (!q) return true
+    return [v.custom_name, v.service_scope, v.notes, v.vendor_category && CATEGORY_NAMES[v.vendor_category]].some((f) => (f ?? '').toLowerCase().includes(q))
   })
+
+  const filterOptions = [
+    { value: 'all' as Filter, label: 'Semua', count: vendors.length },
+    ...FLOW.map((s) => ({ value: s as Filter, label: STATUS[s].label, count: count(s) })),
+    ...(count('dibatalkan') > 0 ? [{ value: 'dibatalkan' as Filter, label: STATUS.dibatalkan.label, count: count('dibatalkan') }] : []),
+  ]
 
   return (
     <div className="space-y-6 lg:space-y-8">
-      {/* Header */}
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="font-display text-[2.4rem] font-semibold leading-tight sm:text-5xl">Vendor Pernikahan</h1>
-            {isDemo && (
-              <Badge tone="gold" className="self-center">
-                Akun Demo Interaktif
-              </Badge>
-            )}
-          </div>
-          <p className="mt-1 text-ink-muted">
-            Katalog vendor, rincian kontrak kerja, ruang lingkup layanan, dan kontak PIC tim pendukung hari H.
-          </p>
-        </div>
+      <PageHeader
+        title="Vendor"
+        description="Catat semua calon vendor di satu tempat, lalu tandai progresnya sampai deal."
+        actions={
+          <Button onClick={() => setShowVendorModal(true)} icon={<Plus className="size-4" aria-hidden />}>
+            Tambah vendor
+          </Button>
+        }
+      />
 
-        <Button
-          onClick={() => setShowVendorModal(true)}
-          icon={<Plus className="size-4" />}
-        >
-          Tambah Vendor
-        </Button>
-      </header>
+      <HowTo
+        id="vendors"
+        steps={[
+          <>Tambahkan vendor yang sedang kamu lirik beserta harga penawarannya.</>,
+          <>Tekan tombol langkah berikutnya: <strong className="text-ink">Kandidat → Dihubungi → Dipertimbangkan → Deal</strong>.</>,
+          <>Vendor berstatus <strong className="text-ink">Deal</strong> otomatis masuk ke total nilai kontrak.</>,
+        ]}
+      />
 
-      {/* Stats Grid */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Card className="p-5">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-ink-muted">Vendor Dipilih (Deal)</span>
-            <div className="flex size-9 items-center justify-center rounded-xl bg-success-soft text-success">
-              <CheckCircle2 className="size-5" />
-            </div>
-          </div>
-          <p className="mt-3 font-display text-2xl font-bold text-ink">
-            {chosenVendors.length} <span className="text-sm font-normal text-ink-muted">dari {vendors.length} vendor</span>
-          </p>
-          <p className="mt-1 text-xs text-ink-subtle">Vendor resmi yang sudah mengikat kontrak</p>
-        </Card>
+      <Card className="grid gap-4 p-5 sm:grid-cols-3 sm:p-6">
+        <Stat label="Sudah deal" value={`${deals.length} vendor`} hint={`dari ${vendors.length} vendor yang dicatat`} tone="success" />
+        <Stat label="Total nilai kontrak" value={formatRupiah(totalContract)} hint="Jumlah harga semua vendor yang deal" />
+        <Stat label="Masih dijajaki" value={`${count('dihubungi') + count('dipertimbangkan')} vendor`} hint="Sudah dihubungi atau sedang dipertimbangkan" />
+      </Card>
 
-        <Card className="p-5">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-ink-muted">Total Komitmen Kontrak</span>
-            <div className="flex size-9 items-center justify-center rounded-xl bg-primary-soft text-primary">
-              <Building2 className="size-5" />
-            </div>
-          </div>
-          <p className="mt-3 font-display text-2xl font-bold text-primary">{formatRupiah(totalContract)}</p>
-          <p className="mt-1 text-xs text-ink-subtle">Akumulasi nilai seluruh vendor terpilih</p>
-        </Card>
-
-        <Card className="p-5 sm:col-span-2 lg:col-span-1">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-ink-muted">Dalam Penjajakan</span>
-            <div className="flex size-9 items-center justify-center rounded-xl bg-gold-soft text-gold-text">
-              <Clock className="size-5" />
-            </div>
-          </div>
-          <p className="mt-3 font-display text-2xl font-bold text-ink">
-            {vendors.filter((v) => v.status === 'dipertimbangkan' || v.status === 'dihubungi').length}{' '}
-            <span className="text-sm font-normal text-ink-muted">vendor</span>
-          </p>
-          <p className="mt-1 text-xs text-ink-subtle">Sedang dinegosiasi atau menunggu penawaran</p>
-        </Card>
+      <div className="space-y-3">
+        <ChipGroup<Filter> label="Saring berdasarkan status" value={filter} onChange={setFilter} options={filterOptions} />
+        <SearchInput label="Cari vendor" value={query} onChange={setQuery} placeholder="Cari nama, kategori, atau layanan…" className="sm:max-w-sm" />
       </div>
 
-      {/* Filter & Search Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap gap-1.5">
-          <button
-            type="button"
-            onClick={() => setSelectedStatus('all')}
-            className={`cursor-pointer rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
-              selectedStatus === 'all'
-                ? 'bg-primary text-on-primary'
-                : 'bg-surface border border-border text-ink-muted hover:bg-surface-muted hover:text-ink'
-            }`}
-          >
-            Semua ({vendors.length})
-          </button>
-          {(['dipilih', 'dipertimbangkan', 'dihubungi', 'kandidat'] as WeddingVendorStatus[]).map((status) => {
-            const count = vendors.filter((v) => v.status === status).length
-            return (
-              <button
-                key={status}
-                type="button"
-                onClick={() => setSelectedStatus(status)}
-                className={`cursor-pointer rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
-                  selectedStatus === status
-                    ? 'bg-primary text-on-primary'
-                    : 'bg-surface border border-border text-ink-muted hover:bg-surface-muted hover:text-ink'
-                }`}
-              >
-                {STATUS_LABELS[status].label} ({count})
-              </button>
-            )
-          })}
+      {vendors.length === 0 ? (
+        <EmptyState
+          icon={<Store className="size-7" aria-hidden />}
+          title="Belum ada vendor"
+          description="Mulai dari vendor yang paling penting dulu, misalnya venue dan katering."
+          action={
+            <Button onClick={() => setShowVendorModal(true)} icon={<Plus className="size-4" aria-hidden />}>
+              Tambah vendor pertama
+            </Button>
+          }
+        />
+      ) : shown.length === 0 ? (
+        <EmptyState
+          icon={<Store className="size-7" aria-hidden />}
+          title="Tidak ada vendor yang cocok"
+          description="Coba kata kunci lain atau pilih status Semua."
+          action={
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setFilter('all')
+                setQuery('')
+              }}
+            >
+              Tampilkan semua
+            </Button>
+          }
+        />
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
+          {shown.map((vendor) => (
+            <VendorCard
+              key={vendor.id}
+              vendor={vendor}
+              onStatus={(s) => void updateVendorStatus(vendor.id, s)}
+              onDelete={() => confirm.ask(vendor)}
+            />
+          ))}
         </div>
+      )}
 
-        <div className="relative w-full sm:w-64">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted" />
-          <input
-            type="text"
-            placeholder="Cari nama atau layanan..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-xl border border-border bg-surface py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink-subtle focus:border-primary focus:outline-none"
-          />
-        </div>
-      </div>
-
-      {/* Vendor Cards Grid */}
-      <div className="grid gap-5 md:grid-cols-2">
-        {filteredVendors.length === 0 ? (
-          <div className="col-span-full rounded-2xl border border-dashed border-border p-12 text-center">
-            <Store className="mx-auto size-10 text-ink-subtle" />
-            <p className="mt-3 font-semibold text-ink">Tidak ada vendor ditemukan</p>
-            <p className="text-sm text-ink-muted">Coba ubah kata kunci pencarian atau filter status.</p>
-          </div>
-        ) : (
-          filteredVendors.map((vendor) => {
-            const statusConfig = STATUS_LABELS[vendor.status] ?? STATUS_LABELS.kandidat
-            const catLabel = vendor.vendor_category ? CATEGORY_NAMES[vendor.vendor_category] ?? vendor.vendor_category : 'Vendor'
-
-            return (
-              <Card key={vendor.id} className="flex flex-col justify-between overflow-hidden p-6 transition-shadow hover:shadow-pop">
-                <div>
-                  {/* Top Bar: Name & Status */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <span className="text-xs font-semibold uppercase tracking-wider text-primary">{catLabel}</span>
-                      <h3 className="mt-0.5 text-lg font-bold text-ink">{vendor.custom_name ?? 'Nama Vendor'}</h3>
-                    </div>
-                    <Badge tone={statusConfig.tone}>{statusConfig.label}</Badge>
-                  </div>
-
-                  {/* Financial / Contract amount */}
-                  <div className="mt-4 rounded-xl bg-surface-muted/60 p-3.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-ink-muted">
-                        {vendor.contract_amount ? 'Nilai Kontrak Deal' : 'Estimasi Penawaran'}
-                      </span>
-                      <span className="font-display text-base font-bold text-ink tabular">
-                        {vendor.contract_amount
-                          ? formatRupiah(vendor.contract_amount)
-                          : vendor.quoted_amount
-                            ? formatRupiah(vendor.quoted_amount)
-                            : 'Belum ada harga'}
-                      </span>
-                    </div>
-                    {vendor.extra_costs_note && (
-                      <p className="mt-1 text-xs text-ink-subtle italic">Info biaya: {vendor.extra_costs_note}</p>
-                    )}
-                  </div>
-
-                  {/* Service Scope */}
-                  {vendor.service_scope && (
-                    <div className="mt-4 space-y-1">
-                      <div className="flex items-center gap-1.5 text-xs font-semibold text-ink-muted">
-                        <FileText className="size-3.5" />
-                        <span>Ruang Lingkup Layanan:</span>
-                      </div>
-                      <p className="text-sm leading-relaxed text-ink/90 whitespace-pre-line">{vendor.service_scope}</p>
-                    </div>
-                  )}
-
-                  {/* Contact Note */}
-                  {vendor.contact_note && (
-                    <div className="mt-3 flex items-start gap-2 text-xs text-ink-muted">
-                      <Phone className="mt-0.5 size-3.5 shrink-0 text-primary" />
-                      <span>{vendor.contact_note}</span>
-                    </div>
-                  )}
-
-                  {/* Personal Notes */}
-                  {vendor.notes && (
-                    <div className="mt-3 rounded-lg border border-border/80 bg-surface/50 p-2.5 text-xs text-ink-muted">
-                      <strong>Catatan khusus:</strong> {vendor.notes}
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-5 flex items-center justify-between border-t border-border pt-4 text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="text-ink-muted font-medium">Ubah Status:</span>
-                    <select
-                      value={vendor.status}
-                      onChange={(e) => void updateVendorStatus(vendor.id, e.target.value as WeddingVendorStatus)}
-                      className="rounded-lg border border-border bg-canvas px-2 py-1 text-xs text-ink focus:border-primary"
-                    >
-                      <option value="kandidat">Kandidat</option>
-                      <option value="dihubungi">Dihubungi</option>
-                      <option value="dipertimbangkan">Dipertimbangkan</option>
-                      <option value="dipilih">Dipilih (Deal)</option>
-                      <option value="dibatalkan">Dibatalkan</option>
-                    </select>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (confirm(`Hapus vendor "${vendor.custom_name}"?`)) {
-                        void deleteVendor(vendor.id)
-                      }
-                    }}
-                    className="inline-flex size-8 cursor-pointer items-center justify-center rounded-lg text-ink-subtle hover:bg-danger-soft hover:text-danger transition-colors"
-                    title="Hapus Vendor"
-                  >
-                    <Trash2 className="size-4" />
-                  </button>
-                </div>
-              </Card>
-            )
-          })
-        )}
-      </div>
-
-      {/* Vendor Modal */}
-      <VendorModal
-        isOpen={showVendorModal}
-        onClose={() => setShowVendorModal(false)}
-        categories={categories}
-        onSubmit={async (data) => {
-          await createVendor(data)
-        }}
+      <VendorModal isOpen={showVendorModal} onClose={() => setShowVendorModal(false)} categories={categories} onSubmit={createVendor} />
+      <ConfirmDialog
+        open={confirm.target != null}
+        title="Hapus vendor ini?"
+        message={
+          <>
+            <strong className="text-ink">{confirm.target?.custom_name}</strong> akan dihapus dari daftar. Jika hanya tidak jadi dipakai, ubah
+            statusnya menjadi Dibatalkan saja.
+          </>
+        }
+        onConfirm={() => (confirm.target ? deleteVendor(confirm.target.id) : undefined)}
+        onClose={confirm.close}
       />
     </div>
+  )
+}
+
+function VendorCard({ vendor, onStatus, onDelete }: { vendor: WeddingVendor; onStatus: (s: WeddingVendorStatus) => void; onDelete: () => void }) {
+  const status = STATUS[vendor.status] ?? STATUS.kandidat
+  const next = NEXT_STEP[vendor.status]
+  const price = vendor.contract_amount ?? vendor.quoted_amount
+  const stepIndex = FLOW.indexOf(vendor.status)
+  const hasDetail = Boolean(vendor.service_scope || vendor.notes || vendor.extra_costs_note)
+
+  return (
+    <Card className="flex flex-col p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+            {vendor.vendor_category ? CATEGORY_NAMES[vendor.vendor_category] ?? vendor.vendor_category : 'Vendor'}
+          </p>
+          <h3 className="mt-0.5 text-lg font-semibold text-ink">{vendor.custom_name ?? 'Tanpa nama'}</h3>
+        </div>
+        <Badge tone={status.tone}>{status.label}</Badge>
+      </div>
+
+      {/* Progres alur: 4 titik */}
+      {stepIndex >= 0 && (
+        <div className="mt-3 flex items-center gap-1.5" aria-label={`Tahap ${stepIndex + 1} dari 4: ${status.hint}`} role="img">
+          {FLOW.map((s, i) => (
+            <span key={s} className={`h-1.5 flex-1 rounded-full ${i <= stepIndex ? 'bg-primary' : 'bg-surface-muted'}`} />
+          ))}
+        </div>
+      )}
+      <p className="mt-1.5 text-xs text-ink-subtle">{status.hint}</p>
+
+      <div className="mt-4 flex items-baseline justify-between gap-3 rounded-xl bg-surface-muted/60 px-4 py-3">
+        <span className="text-sm text-ink-muted">{vendor.contract_amount ? 'Harga deal' : 'Harga penawaran'}</span>
+        <span className="font-semibold text-ink tabular">{price ? formatRupiah(price) : 'Belum ada'}</span>
+      </div>
+
+      {vendor.contact_note && (
+        <p className="mt-3 flex items-start gap-2 text-sm text-ink-muted">
+          <Phone className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+          {vendor.contact_note}
+        </p>
+      )}
+
+      {hasDetail && (
+        <details className="group mt-3">
+          <summary className="flex min-h-10 cursor-pointer list-none items-center gap-1 text-sm font-semibold text-primary [&::-webkit-details-marker]:hidden">
+            <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden />
+            Lihat detail layanan & catatan
+          </summary>
+          <div className="space-y-2 pb-1 text-sm text-ink-muted">
+            {vendor.service_scope && <p className="whitespace-pre-line">{vendor.service_scope}</p>}
+            {vendor.extra_costs_note && <p>Biaya tambahan: {vendor.extra_costs_note}</p>}
+            {vendor.notes && <p>Catatan: {vendor.notes}</p>}
+          </div>
+        </details>
+      )}
+
+      <div className="flex-1" />
+      <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-4">
+        {next && (
+          <Button size="sm" variant={next.to === 'dipilih' ? 'primary' : 'secondary'} className="w-full sm:w-auto" onClick={() => onStatus(next.to)} icon={<ArrowRight className="size-4" aria-hidden />}>
+            {next.label}
+          </Button>
+        )}
+        <SelectFilter label={`Ubah status ${vendor.custom_name ?? 'vendor'}`} value={vendor.status} onChange={(v) => onStatus(v as WeddingVendorStatus)} className="min-w-0 flex-1 sm:ml-auto sm:w-44 sm:flex-none [&_select]:h-9">
+          {[...FLOW, 'dibatalkan' as const].map((s) => (
+            <option key={s} value={s}>
+              {STATUS[s].label}
+            </option>
+          ))}
+        </SelectFilter>
+        <IconButton label={`Hapus ${vendor.custom_name ?? 'vendor'}`} tone="danger" onClick={onDelete}>
+          <Trash2 className="size-4" aria-hidden />
+        </IconButton>
+      </div>
+    </Card>
   )
 }
