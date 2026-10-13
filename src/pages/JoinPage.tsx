@@ -79,8 +79,8 @@ export function JoinPage() {
           transition={{ duration: 0.6, ease: EASE_OUT }}
           className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center py-10"
         >
-          <span className="mb-6 flex size-14 items-center justify-center rounded-2xl bg-rose-soft text-rose">
-            <Heart className="size-7 fill-rose/20" aria-hidden />
+          <span className="mb-6 flex size-14 items-center justify-center rounded-2xl bg-partner-soft text-partner">
+            <Heart className="size-7 fill-partner/20" aria-hidden />
           </span>
 
           {!valid ? (

@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router'
 import {
   Brain,
   CalendarClock,
+  FileCheck2,
   FlaskConical,
   Heart,
   LayoutDashboard,
@@ -21,6 +22,7 @@ import {
 import { EASE_OUT, SPRING, m } from '@/components/motion'
 import { Logo } from '@/components/ui/Logo'
 import { MemberAvatar } from '@/components/couple/Cover'
+import { SideGate } from '@/components/couple/SidePicker'
 import { useAuth } from '@/auth/AuthProvider'
 import { firstName, useWedding, useWorkspace } from '@/auth/WorkspaceProvider'
 import { getCurrentDemoAccount } from '@/lib/demoData'
@@ -35,6 +37,7 @@ const PLANNING: NavItem[] = [
   { to: '/app/tabungan', label: 'Tabungan bersama', icon: PiggyBank },
   { to: '/app/vendors', label: 'Vendor', icon: Store },
   { to: '/app/checklist', label: 'Checklist', icon: ListChecks },
+  { to: '/app/berkas', label: 'Berkas KUA', icon: FileCheck2 },
   { to: '/app/guests', label: 'Tamu', icon: Users },
   { to: '/app/rundown', label: 'Rundown', icon: CalendarClock },
 ]
@@ -54,6 +57,7 @@ const MOBILE_PRIMARY: NavItem[] = [
 ]
 const MOBILE_MORE: NavItem[] = [
   { to: '/app/tabungan', label: 'Tabungan bersama', icon: PiggyBank },
+  { to: '/app/berkas', label: 'Berkas KUA', icon: FileCheck2 },
   { to: '/app/vendors', label: 'Vendor', icon: Store },
   { to: '/app/guests', label: 'Tamu', icon: Users },
   { to: '/app/rundown', label: 'Rundown', icon: CalendarClock },
@@ -62,7 +66,7 @@ const MOBILE_MORE: NavItem[] = [
 
 export function AppLayout() {
   const wedding = useWedding()
-  const { me, partner } = useWorkspace()
+  const { me, partner, couple } = useWorkspace()
   const { signOut, user } = useAuth()
   const location = useLocation()
   const isDemo = Boolean(getCurrentDemoAccount())
@@ -79,22 +83,23 @@ export function AppLayout() {
 
         {/* Demo badge */}
         {isDemo && (
-          <div className="mx-2 mt-3 flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-            <span className="size-2 shrink-0 rounded-full bg-emerald-500 animate-pulse" />
+          <div className="mx-2 mt-3 flex items-center gap-2 rounded-lg bg-primary-soft px-3 py-2 text-xs font-semibold text-primary">
+            <span className="size-2 shrink-0 rounded-full bg-primary animate-pulse" />
             Akun Demo Aktif (Bisa Olah Data)
           </div>
         )}
 
-        <div className="mx-2 mt-3 flex items-center gap-3 rounded-xl bg-gradient-to-br from-primary-soft/80 to-rose-soft/70 p-3">
+        <div className="mx-2 mt-3 flex items-center gap-3 rounded-xl bg-gradient-to-br from-primary-soft/80 to-partner-soft/70 p-3">
           {me && (
             <div className="flex -space-x-2.5">
-              <MemberAvatar member={me.role === 'owner' ? me : partner ?? me} size="sm" />
-              {partner && <MemberAvatar member={me.role === 'owner' ? partner : me} size="sm" />}
+              {couple.map((mb) => (
+                <MemberAvatar key={mb.userId} member={mb} size="sm" />
+              ))}
             </div>
           )}
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-ink">
-              {partner && me ? `${firstName(me.name)} & ${firstName(partner.name)}` : wedding.title}
+              {partner && me ? `${couple.map((mb) => firstName(mb.name)).join(' & ')}` : wedding.title}
             </p>
             <p className="truncate text-xs text-ink-muted">{wedding.wedding_date ? formatDate(wedding.wedding_date) : wedding.city}</p>
           </div>
@@ -151,8 +156,9 @@ export function AppLayout() {
             )}
             {me && (
               <div className="flex -space-x-2.5">
-                <MemberAvatar member={me.role === 'owner' ? me : partner ?? me} size="sm" />
-                {partner && <MemberAvatar member={me.role === 'owner' ? partner : me} size="sm" />}
+                {couple.map((mb) => (
+                  <MemberAvatar key={mb.userId} member={mb} size="sm" />
+                ))}
               </div>
             )}
           </div>
@@ -167,6 +173,7 @@ export function AppLayout() {
       </div>
 
       <MobileNav onSignOut={() => void signOut()} isDemo={isDemo} />
+      <SideGate />
     </div>
   )
 }
@@ -174,7 +181,7 @@ export function AppLayout() {
 function NavGroup({ label, items, accent }: { label?: string; items: NavItem[]; accent?: boolean }) {
   return (
     <div>
-      {label && <p className={cn('mb-2 px-3 text-xs font-semibold uppercase tracking-[0.12em]', accent ? 'text-rose' : 'text-ink-subtle')}>{label}</p>}
+      {label && <p className={cn('mb-2 px-3 text-xs font-semibold uppercase tracking-[0.12em]', accent ? 'text-partner' : 'text-ink-subtle')}>{label}</p>}
       <ul className="space-y-1">
         {items.map((item) => (
           <li key={item.to}>
@@ -243,7 +250,7 @@ function MobileNav({ onSignOut, isDemo }: { onSignOut: () => void; isDemo: boole
                     <span className="relative flex h-7 w-12 items-center justify-center">
                       {isActive && <m.span layoutId="bottom-active" transition={SPRING} className="absolute inset-0 rounded-full bg-primary-soft" />}
                       <m.span className="relative" animate={{ scale: isActive ? 1.08 : 1 }} transition={SPRING}>
-                        <Icon className={cn('size-5', to === '/app/kita' && isActive && 'fill-rose/25 text-rose')} aria-hidden />
+                        <Icon className={cn('size-5', to === '/app/kita' && isActive && 'fill-partner/25 text-partner')} aria-hidden />
                       </m.span>
                     </span>
                     {label}

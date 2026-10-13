@@ -8,6 +8,8 @@ import {
   setDemoSession,
   type DemoAccountId,
 } from '@/lib/demoData'
+import type { MemberSide } from '@/lib/database.types'
+import { applySideTheme } from '@/lib/side'
 
 type AuthState = {
   configured: boolean
@@ -18,7 +20,8 @@ type AuthState = {
   recovering: boolean
   isDemo: boolean
   signOut: () => Promise<void>
-  signInDemo: (id: DemoAccountId) => void
+  /** side: buka demo sebagai CPP (default) atau CPW */
+  signInDemo: (id: DemoAccountId, side?: MemberSide) => void
 }
 
 const AuthContext = createContext<AuthState | null>(null)
@@ -75,14 +78,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     clearDemoSession()
+    applySideTheme(null)
     if (supabase) {
       await supabase.auth.signOut().catch(() => {})
     }
     setSession(null)
   }, [])
 
-  const signInDemo = useCallback((id: DemoAccountId) => {
-    const account = setDemoSession(id)
+  const signInDemo = useCallback((id: DemoAccountId, side: MemberSide = 'cpp') => {
+    const account = setDemoSession(id, side)
     const mock = createMockSession(account.user)
     setSession(mock)
     setLoading(false)

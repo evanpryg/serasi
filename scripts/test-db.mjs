@@ -55,6 +55,7 @@ const tests = {
   'uji akun pasangan': readFileSync(join(root, 'supabase', 'tests', 'couple_access.sql'), 'utf8'),
   'uji tabungan bersama': readFileSync(join(root, 'supabase', 'tests', 'savings_access.sql'), 'utf8'),
   'uji rincian anggaran': readFileSync(join(root, 'supabase', 'tests', 'budget_items.sql'), 'utf8'),
+  'uji peran CPP/CPW & berkas': readFileSync(join(root, 'supabase', 'tests', 'couple_sides.sql'), 'utf8'),
 }
 let failed = false
 
@@ -75,7 +76,7 @@ async function runAll(db) {
   if (error) {
     failed = true
     console.error('✗ gagal →', error)
-  } else console.log('✓ migration, uji isolasi, akun pasangan, tabungan bersama, dan rincian anggaran lulus')
+  } else console.log('✓ migration, uji isolasi, akun pasangan, tabungan bersama, rincian anggaran, dan peran CPP/CPW + berkas lulus')
 }
 
 // 2. Mutation test: kebocoran yang sengaja dibuat HARUS terdeteksi
@@ -101,6 +102,9 @@ const mutations = {
   'dana tidak ikut setoran': `drop trigger savings_entries_sync_funds on public.savings_entries;`,
   'hapus pos lewati RLS (SECURITY DEFINER)': `alter function public.delete_budget_category(uuid) security definer;`,
   'link item tanpa validasi': `alter table public.expenses drop constraint expenses_link_url_check;`,
+  'berkas terbaca workspace lain': `drop policy "Documents: members read" on public.wedding_documents;
+     create policy leak on public.wedding_documents for select to authenticated using (true);`,
+  'pasangan tidak mendapat peran sisa': `drop trigger wedding_members_default_side on public.wedding_members;`,
   'profil semua user terbuka': `drop policy "Partner profile: select" on public.profiles;
      create policy leak on public.profiles for select to authenticated using (true);`,
 }

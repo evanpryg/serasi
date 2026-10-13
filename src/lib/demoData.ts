@@ -11,6 +11,7 @@ import type {
   Task,
   Wedding,
   WeddingVendor,
+  MemberSide,
 } from './database.types'
 import { buildInitialTasks } from './checklistTemplates'
 
@@ -65,6 +66,7 @@ export const DEMO_ACCOUNTS: Record<DemoAccountId, DemoAccount> = {
     me: {
       userId: 'demo-user-gratis-1',
       role: 'owner',
+      side: 'cpp',
       name: 'Bayu Pratama',
       avatarUrl: null,
       isMe: true,
@@ -72,6 +74,7 @@ export const DEMO_ACCOUNTS: Record<DemoAccountId, DemoAccount> = {
     partner: {
       userId: 'demo-user-gratis-2',
       role: 'partner',
+      side: 'cpw',
       name: 'Citra Lestari',
       avatarUrl: null,
       isMe: false,
@@ -313,6 +316,7 @@ export const DEMO_ACCOUNTS: Record<DemoAccountId, DemoAccount> = {
     me: {
       userId: 'demo-user-premium-1',
       role: 'owner',
+      side: 'cpp',
       name: 'Dimas Wicaksono',
       avatarUrl: null,
       isMe: true,
@@ -320,6 +324,7 @@ export const DEMO_ACCOUNTS: Record<DemoAccountId, DemoAccount> = {
     partner: {
       userId: 'demo-user-premium-2',
       role: 'partner',
+      side: 'cpw',
       name: 'Aluna Saraswati',
       avatarUrl: null,
       isMe: false,
@@ -552,21 +557,54 @@ export function getDemoAccountIdByEmail(email: string): DemoAccountId | null {
   return null
 }
 
+export const DEMO_AS_KEY = 'serasi:demo_as'
+
+/**
+ * Akun demo bisa dibuka dari sudut pandang CPP (default) atau CPW.
+ * Sudut pandang CPW = me/partner ditukar dan user sesi menjadi si CPW.
+ */
+const demoViews = new Map<string, DemoAccount>()
+
+function viewAs(account: DemoAccount, side: MemberSide): DemoAccount {
+  if (side === 'cpp') return account
+  const key = `${account.id}:${side}`
+  const cached = demoViews.get(key)
+  if (cached) return cached
+  const view: DemoAccount = {
+    ...account,
+    user: {
+      ...account.user,
+      id: account.partner.userId,
+      user_metadata: { full_name: account.partner.name },
+    },
+    me: { ...account.partner, isMe: true },
+    partner: { ...account.me, isMe: false },
+  }
+  demoViews.set(key, view)
+  return view
+}
+
+export function getDemoSide(): MemberSide {
+  return localStorage.getItem(DEMO_AS_KEY) === 'cpw' ? 'cpw' : 'cpp'
+}
+
 export function getCurrentDemoAccount(): DemoAccount | null {
   const id = localStorage.getItem(DEMO_SESSION_KEY) as DemoAccountId | null
   if (!id || !DEMO_ACCOUNTS[id]) return null
-  return DEMO_ACCOUNTS[id]
+  return viewAs(DEMO_ACCOUNTS[id], getDemoSide())
 }
 
-export function setDemoSession(id: DemoAccountId): DemoAccount {
+export function setDemoSession(id: DemoAccountId, side: MemberSide = 'cpp'): DemoAccount {
   localStorage.setItem(DEMO_SESSION_KEY, id)
+  localStorage.setItem(DEMO_AS_KEY, side)
   const account = DEMO_ACCOUNTS[id]
   localStorage.setItem('serasi:premium_unlocked', account.isPremium ? 'true' : 'false')
-  return account
+  return viewAs(account, side)
 }
 
 export function clearDemoSession(): void {
   localStorage.removeItem(DEMO_SESSION_KEY)
+  localStorage.removeItem(DEMO_AS_KEY)
 }
 
 export function createMockSession(user: User): Session {

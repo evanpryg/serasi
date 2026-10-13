@@ -14,13 +14,13 @@ import { cn } from '@/lib/cn'
 
 export function KitaPage() {
   const wedding = useWedding()
-  const { me, partner } = useWorkspace()
+  const { me, partner, couple } = useWorkspace()
   const personality = usePersonality(wedding.id)
   const deeptalk = useDeepTalk(wedding.id)
   if (!me) return null
 
   const daysLeft = wedding.wedding_date ? daysBetween(new Date(), parseDateOnly(wedding.wedding_date)) : null
-  const names = partner ? `${firstName(me.role === 'owner' ? me.name : partner.name)} & ${firstName(me.role === 'owner' ? partner.name : me.name)}` : wedding.title
+  const names = partner ? `${couple.map((mb) => firstName(mb.name)).join(' & ')}` : wedding.title
 
   // Status tes kepribadian
   let personalityStatus: { label: string; done: boolean; detail: string } = { label: 'Belum dimulai', done: false, detail: '28 pernyataan · ±5 menit' }
@@ -72,8 +72,9 @@ export function KitaPage() {
         <CoverPhotoControls className="absolute right-4 top-4 z-10" />
         <div className="absolute inset-x-0 bottom-0 p-6 text-white sm:p-8">
           <div className="flex -space-x-3">
-            <MemberAvatar member={me.role === 'owner' ? me : partner ?? me} />
-            {partner && <MemberAvatar member={me.role === 'owner' ? partner : me} />}
+            {couple.map((mb) => (
+              <MemberAvatar key={mb.userId} member={mb} />
+            ))}
           </div>
           <p className="mt-3 text-sm font-semibold uppercase tracking-[0.16em] text-gold-on-dark">Kita berdua</p>
           <h1 className="mt-1 font-display text-[2.6rem] font-semibold leading-[1.05] sm:text-6xl">{names}</h1>
@@ -104,7 +105,7 @@ export function KitaPage() {
           <FeatureCard
             to="/app/kita/deeptalk"
             icon={<MessageCircleHeart className="size-6" aria-hidden />}
-            tone="rose"
+            tone="partner"
             title="Deep talk"
             description="Visi, keuangan, keluarga, anak, dan cara berdamai. Cek apakah kalian sejalan."
             loading={deeptalk.state.status === 'loading'}
@@ -125,7 +126,7 @@ export function KitaPage() {
 function FeatureCard(props: {
   to: string
   icon: ReactNode
-  tone: 'primary' | 'rose'
+  tone: 'primary' | 'partner'
   title: string
   description: string
   loading: boolean
@@ -140,7 +141,7 @@ function FeatureCard(props: {
         to={to}
         className="group flex h-full flex-col rounded-[1.5rem] border border-border bg-surface p-6 shadow-card transition-shadow hover:shadow-pop sm:p-7"
       >
-        <span className={cn('flex size-12 items-center justify-center rounded-2xl', tone === 'primary' ? 'bg-primary text-on-primary' : 'bg-rose text-white')}>{icon}</span>
+        <span className={cn('flex size-12 items-center justify-center rounded-2xl', tone === 'primary' ? 'bg-primary text-on-primary' : 'bg-partner text-white')}>{icon}</span>
         <h2 className="mt-5 font-display text-3xl font-semibold text-ink">{title}</h2>
         <p className="mt-1.5 text-ink-muted">{description}</p>
         <div className="mt-6 flex-1" />

@@ -3,7 +3,7 @@ import { Link } from 'react-router'
 import {
   AlertTriangle,
   ArrowRight,
-  CalendarClock,
+  FileCheck2,
   CalendarHeart,
   ChevronRight,
   CircleDollarSign,
@@ -31,13 +31,13 @@ import { clearFlash, peekFlash } from '@/lib/flash'
 
 export function DashboardPage() {
   const wedding = useWedding()
-  const { me, partner } = useWorkspace()
+  const { me, partner, couple } = useWorkspace()
   const [flash] = useState(peekFlash)
   useEffect(clearFlash, [])
   const { state, reload } = useDashboardData(wedding.id)
 
   const daysLeft = wedding.wedding_date ? daysBetween(new Date(), parseDateOnly(wedding.wedding_date)) : null
-  const names = me && partner ? `${firstName(me.role === 'owner' ? me.name : partner.name)} & ${firstName(me.role === 'owner' ? partner.name : me.name)}` : wedding.title
+  const names = me && partner ? `${couple.map((mb) => firstName(mb.name)).join(' & ')}` : wedding.title
 
   return (
     <div className="space-y-6 lg:space-y-8">
@@ -345,7 +345,7 @@ function QuickActions() {
     { label: 'Vendor', to: '/app/vendors', icon: Store },
     { label: 'Tugas', to: '/app/checklist', icon: ListChecks },
     { label: 'Tamu', to: '/app/guests', icon: UserPlus },
-    { label: 'Jadwal acara', to: '/app/rundown', icon: CalendarClock },
+    { label: 'Berkas KUA', to: '/app/berkas', icon: FileCheck2 },
   ]
   return (
     <Card>

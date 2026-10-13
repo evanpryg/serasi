@@ -10,7 +10,9 @@ import { updateDemoMemberName, updateDemoWedding } from '@/lib/demoStore'
 import { deleteProfileAvatar, uploadProfileAvatar, validateAvatarFile } from '@/lib/avatar'
 import { AvatarUploadButton, CoverImage, CoverPhotoControls, MemberAvatar } from '@/components/couple/Cover'
 import { PartnerInvite } from '@/components/couple/PartnerInvite'
-import { Badge } from '@/components/ui/Card'
+import { SidePicker } from '@/components/couple/SidePicker'
+import { SIDE_LABEL, SIDE_TONE, applySideTheme } from '@/lib/side'
+import { cn } from '@/lib/cn'
 import { Button } from '@/components/ui/Button'
 import { Card, CardBody, CardHeader } from '@/components/ui/Card'
 import { Alert } from '@/components/ui/Feedback'
@@ -387,7 +389,8 @@ function DataCard() {
 function CoupleCard() {
   const wedding = useWedding()
   const { user } = useAuth()
-  const { me, partner, members, refresh } = useWorkspace()
+  const { me, partner, members, refresh, sidesSupported, setMySide } = useWorkspace()
+  const [sideSaving, setSideSaving] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -459,12 +462,45 @@ function CoupleCard() {
                 <p className="truncate font-semibold text-ink">
                   {mem.name} {mem.isMe && <span className="font-normal text-ink-muted">(kamu)</span>}
                 </p>
-                <p className="text-sm text-ink-muted">{mem.role === 'owner' ? 'Pembuat workspace' : 'Pasangan'}</p>
+                <p className="text-sm text-ink-muted">
+                  {mem.side ? SIDE_LABEL[mem.side].long : 'Peran belum dipilih'}
+                  {mem.role === 'owner' && ' · pembuat workspace'}
+                </p>
               </div>
-              <Badge tone={mem.role === 'owner' ? 'primary' : 'neutral'}>{mem.role === 'owner' ? 'Owner' : 'Partner'}</Badge>
+              {mem.side && (
+                <span className={cn('rounded-full px-2.5 py-1 text-xs font-bold tracking-wide', SIDE_TONE[mem.side].soft, SIDE_TONE[mem.side].text)}>
+                  {SIDE_LABEL[mem.side].short}
+                </span>
+              )}
             </li>
           ))}
         </ul>
+        {sidesSupported && (
+          <div>
+            <p className="text-sm font-semibold text-ink">Peranku</p>
+            <p className="mt-0.5 text-sm text-ink-muted">
+              Menentukan warna aplikasi (CPP biru, CPW pink) dan pembagian berkas KUA.
+              {partner ? ` Peran ${firstName(partner.name)} ikut bertukar.` : ''}
+            </p>
+            <SidePicker
+              value={me.side}
+              disabledSide={partner?.side}
+              className="mt-3"
+              onChange={(s) => {
+                if (s === me.side || sideSaving) return
+                setSideSaving(true)
+                setAvatarStatus(null)
+                setMySide(s)
+                  .then(() => setAvatarStatus({ tone: 'success', text: `Peran disimpan: ${SIDE_LABEL[s].long}.` }))
+                  .catch((e: unknown) => {
+                    if (me.side) applySideTheme(me.side)
+                    setAvatarStatus({ tone: 'danger', text: e instanceof Error ? e.message : 'Peran gagal disimpan.' })
+                  })
+                  .finally(() => setSideSaving(false))
+              }}
+            />
+          </div>
+        )}
         {!partner && <PartnerInvite />}
         {partner && (
           <div className="rounded-xl border border-danger/20 bg-danger-soft/30 p-4">

@@ -36,12 +36,29 @@ export type Wedding = Timestamps & {
 }
 
 export type MemberRole = 'owner' | 'partner'
+/** cpp = calon pengantin pria, cpw = calon pengantin wanita */
+export type MemberSide = 'cpp' | 'cpw'
 
 export type WeddingMember = {
   wedding_id: string
   user_id: string
   role: MemberRole
+  side: MemberSide | null
   joined_at: string
+}
+
+/** Berkas KUA milik siapa: masing-masing calon atau bersama. */
+export type DocumentSide = MemberSide | 'joint'
+export type DocumentStatus = 'todo' | 'done' | 'na'
+
+export type WeddingDocument = {
+  wedding_id: string
+  doc_key: string
+  side: DocumentSide
+  status: DocumentStatus
+  note: string | null
+  updated_by: string | null
+  updated_at: string
 }
 
 export type WeddingInvite = {
@@ -218,6 +235,7 @@ export type Database = {
       personality_results: Table<PersonalityResult, 'wedding_id' | 'type_code' | 'scores' | 'answers'>
       deeptalk_answers: Table<DeepTalkAnswer, 'wedding_id' | 'question_id' | 'answer'>
       savings_entries: Table<SavingsEntry, 'wedding_id' | 'amount'>
+      wedding_documents: Table<WeddingDocument, 'wedding_id' | 'doc_key' | 'side' | 'status'>
     }
     Views: { [_ in never]: never }
     Functions: {
@@ -244,6 +262,7 @@ export type Database = {
         Returns: { wedding_title: string; wedding_date: string | null; inviter_name: string | null }[]
       }
       accept_wedding_invite: { Args: { p_code: string }; Returns: string }
+      set_my_side: { Args: { p_side: MemberSide }; Returns: undefined }
       delete_budget_category: { Args: { p_category_id: string }; Returns: undefined }
       personality_progress: { Args: { p_wedding_id: string }; Returns: { user_id: string; completed_at: string }[] }
       deeptalk_progress: { Args: { p_wedding_id: string }; Returns: { user_id: string; question_id: string }[] }

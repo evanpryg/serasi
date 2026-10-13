@@ -1,6 +1,6 @@
 # Serasi — Wedding planner untuk berdua
 
-Website perencanaan pernikahan untuk calon pengantin Indonesia. **Satu workspace untuk berdua** (calon suami & calon istri): anggaran, vendor, pembayaran, checklist, tamu, rundown, plus **tes kepribadian** dan **deep talk** untuk saling mengenal sebelum menikah.
+Website perencanaan pernikahan untuk calon pengantin Indonesia. **Satu akun untuk berdua** — calon pengantin pria (CPP, tema biru) & calon pengantin wanita (CPW, tema pink): anggaran, vendor, pembayaran, checklist, tamu, rundown, plus **tes kepribadian** dan **deep talk** untuk saling mengenal sebelum menikah.
 
 **Stack:** React 19 + TypeScript + Vite · Tailwind CSS v4 · React Router · Motion (animasi) · Supabase (Auth, Postgres + RLS, Storage) · Netlify.
 
@@ -42,6 +42,8 @@ Tanpa `.env.local`, landing page tetap bisa dibuka; halaman login/aplikasi menam
    - `supabase/migrations/20261013000001_init_schema.sql` — tabel, constraint, RLS, bucket storage privat `wedding-files`
    - `supabase/migrations/20261013000002_onboarding.sql` — fungsi `create_wedding_workspace` & template checklist
    - `supabase/migrations/20261013000003_couple_personality_deeptalk.sql` — anggota workspace, undangan pasangan, foto sampul, tes kepribadian, deep talk; semua RLS diubah dari *owner* ke *member*
+   - `000004` … `000007` — checklist, tabungan bersama, foto profil, rincian anggaran
+   - `supabase/migrations/20261013000008_bride_groom_documents.sql` — peran CPP/CPW (`wedding_members.side`, RPC `set_my_side`) dan tabel `wedding_documents` untuk berkas KUA
 3. **Uji isolasi di proyek sungguhan:** jalankan `supabase/tests/rls_isolation.sql` lalu `supabase/tests/couple_access.sql` di SQL Editor. Hasil yang diharapkan: `SEMUA UJI ISOLASI LULUS` dan `SEMUA UJI AKUN PASANGAN LULUS` (semua data uji di-rollback).
 4. Ambil **Project URL** dan **publishable key** (atau anon key lama) dari *Project Settings → API*, isi ke `.env.local`.
    > ⚠️ Jangan pernah menaruh `service_role` / secret key di variabel `VITE_*`: semua variabel `VITE_*` masuk ke bundle browser.

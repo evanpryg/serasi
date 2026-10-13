@@ -200,7 +200,7 @@ function Intro({ partner, partnerDone, onStart }: { partner: Member | null; part
     <div className="relative overflow-hidden rounded-[1.75rem] bg-primary p-6 text-on-primary sm:p-10">
       <svg aria-hidden className="absolute -right-24 -top-24 size-[28rem] opacity-20" viewBox="0 0 200 200">
         <circle cx="80" cy="100" r="60" fill="none" stroke="var(--color-gold)" strokeWidth="0.8" />
-        <circle cx="120" cy="100" r="60" fill="none" stroke="var(--color-rose-light)" strokeWidth="0.8" />
+        <circle cx="120" cy="100" r="60" fill="none" stroke="var(--color-partner-light)" strokeWidth="0.8" />
       </svg>
       <div className="relative max-w-xl">
         <Brain className="size-8 text-gold-on-dark" aria-hidden />
@@ -330,7 +330,7 @@ function Quiz({ weddingId, me, initial, onCancel, onDone }: { weddingId: string;
         </p>
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-surface-muted" role="progressbar" aria-label="Progres tes" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
-        <m.div className="h-full origin-left rounded-full bg-gradient-to-r from-primary to-rose" animate={{ scaleX: pct / 100 }} transition={{ type: 'spring', stiffness: 120, damping: 20 }} />
+        <m.div className="h-full origin-left rounded-full bg-gradient-to-r from-primary to-partner" animate={{ scaleX: pct / 100 }} transition={{ type: 'spring', stiffness: 120, damping: 20 }} />
       </div>
 
       <div className="relative mt-10 min-h-[25rem]">
@@ -370,7 +370,7 @@ function Quiz({ weddingId, me, initial, onCancel, onDone }: { weddingId: string;
                         className={cn(
                           'flex shrink-0 items-center justify-center rounded-full border-2 transition-all',
                           ['size-7', 'size-6', 'size-5', 'size-6', 'size-7'][opt.value - 1],
-                          selected ? 'border-white bg-white/20' : opt.value < 3 ? 'border-rose/50' : opt.value > 3 ? 'border-primary/50' : 'border-border-strong',
+                          selected ? 'border-white bg-white/20' : opt.value < 3 ? 'border-partner/50' : opt.value > 3 ? 'border-primary/50' : 'border-border-strong',
                         )}
                       >
                         {selected && <Check className="size-3.5" strokeWidth={3} />}
@@ -407,7 +407,7 @@ function Quiz({ weddingId, me, initial, onCancel, onDone }: { weddingId: string;
   )
 }
 
-function TypeLetters({ code, tone }: { code: TypeCode; tone: 'primary' | 'rose' }) {
+function TypeLetters({ code, tone }: { code: TypeCode; tone: 'primary' | 'partner' }) {
   return (
     <Stagger inView={false} stagger={0.09} delay={0.1} className="flex gap-1.5 sm:gap-2" as="div">
       {code.split('').map((l, i) => (
@@ -415,7 +415,7 @@ function TypeLetters({ code, tone }: { code: TypeCode; tone: 'primary' | 'rose' 
           key={i}
           className={cn(
             'flex size-14 items-center justify-center rounded-2xl font-display text-4xl font-semibold sm:size-[4.5rem] sm:text-5xl shadow-sm',
-            tone === 'primary' ? 'bg-primary text-on-primary' : 'bg-rose text-white',
+            tone === 'primary' ? 'bg-primary text-on-primary' : 'bg-partner text-white',
           )}
         >
           <span title={LETTER_INFO[l as Letter].name}>{l}</span>
@@ -425,7 +425,7 @@ function TypeLetters({ code, tone }: { code: TypeCode; tone: 'primary' | 'rose' 
   )
 }
 
-function DimensionBars({ scores, tone }: { scores: Scores; tone: 'primary' | 'rose' }) {
+function DimensionBars({ scores, tone }: { scores: Scores; tone: 'primary' | 'partner' }) {
   const pairs: [Letter, Letter, keyof Scores][] = [
     ['E', 'I', 'E'],
     ['S', 'N', 'S'],
@@ -449,7 +449,7 @@ function DimensionBars({ scores, tone }: { scores: Scores; tone: 'primary' | 'ro
             <dd className="mt-1.5">
               <div className="relative h-2.5 overflow-hidden rounded-full bg-surface-muted">
                 <m.div
-                  className={cn('absolute inset-y-0 rounded-full', tone === 'primary' ? 'bg-primary' : 'bg-rose', left >= 50 ? 'left-0 origin-left' : 'right-0 origin-right')}
+                  className={cn('absolute inset-y-0 rounded-full', tone === 'primary' ? 'bg-primary' : 'bg-partner', left >= 50 ? 'left-0 origin-left' : 'right-0 origin-right')}
                   style={{ width: `${strength}%` }}
                   initial={{ scaleX: 0 }}
                   animate={{ scaleX: inView ? 1 : 0 }}
@@ -489,12 +489,12 @@ function ResultCard({
   const code = isTypeCode(result.type_code) ? result.type_code : null
   if (!code) return null
   const profile = TYPE_PROFILES[code]
-  const tone = member.role === 'owner' ? 'primary' : 'rose'
+  const tone = member.isMe ? 'primary' : 'partner'
 
   return (
     <section className="overflow-hidden rounded-[1.75rem] border border-border bg-surface shadow-card">
       {/* Header Kartu Kepribadian */}
-      <div className={cn('grid gap-8 p-6 sm:p-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]', tone === 'primary' ? 'bg-gradient-to-br from-primary-soft/70 to-surface' : 'bg-gradient-to-br from-rose-soft to-surface')}>
+      <div className={cn('grid gap-8 p-6 sm:p-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]', tone === 'primary' ? 'bg-gradient-to-br from-primary-soft/70 to-surface' : 'bg-gradient-to-br from-partner-soft to-surface')}>
         <div>
           <div className="flex items-center justify-between gap-3">
             <p className="flex items-center gap-2 text-sm font-semibold text-ink-muted">
@@ -550,13 +550,13 @@ function ResultCard({
           <ul className="mt-3 space-y-2">
             {(isPremium ? profile.watchouts : profile.watchouts.slice(0, 1)).map((s) => (
               <li key={s} className="flex gap-2.5 text-[0.95rem] text-ink-muted">
-                <span className="mt-2 size-1.5 shrink-0 rounded-full bg-rose" aria-hidden />
+                <span className="mt-2 size-1.5 shrink-0 rounded-full bg-partner" aria-hidden />
                 {s}
               </li>
             ))}
           </ul>
           {!isPremium && profile.watchouts.length > 1 && (
-            <p className="mt-3 flex items-center gap-1.5 text-xs font-medium text-rose">
+            <p className="mt-3 flex items-center gap-1.5 text-xs font-medium text-partner">
               <Lock className="size-3" aria-hidden /> +{profile.watchouts.length - 1} titik buta kritis lainnya terbuka di Premium
             </p>
           )}
@@ -576,7 +576,7 @@ function ResultCard({
           <div>
             <div className="flex items-center justify-between gap-2">
               <h3 className="flex items-center gap-2 text-lg font-semibold text-ink">
-                <ShieldAlert className="size-5 text-rose" aria-hidden /> Perkiraan Permasalahan Rumah Tangga & Solusinya
+                <ShieldAlert className="size-5 text-partner" aria-hidden /> Perkiraan Permasalahan Rumah Tangga & Solusinya
               </h3>
               <Badge tone="gold">Analisis Karakter</Badge>
             </div>
@@ -587,7 +587,7 @@ function ResultCard({
               {profile.maritalFrictions.map((f, i) => (
                 <div key={i} className="flex flex-col justify-between rounded-2xl border border-border bg-canvas/60 p-5 shadow-sm">
                   <div>
-                    <span className="inline-block rounded-lg bg-rose-soft px-2 py-0.5 text-xs font-semibold text-rose">
+                    <span className="inline-block rounded-lg bg-partner-soft px-2 py-0.5 text-xs font-semibold text-partner">
                       Isu #{i + 1}
                     </span>
                     <h4 className="mt-2 text-[0.95rem] font-bold text-ink">{f.issue}</h4>
@@ -606,7 +606,7 @@ function ResultCard({
           </div>
 
           {/* 2. Protokol Saat Sedang Marah & Menyelesaikan Konflik */}
-          <div className="rounded-2xl border border-border bg-gradient-to-br from-surface to-rose-soft/20 p-5 sm:p-6">
+          <div className="rounded-2xl border border-border bg-gradient-to-br from-surface to-partner-soft/20 p-5 sm:p-6">
             <h3 className="flex items-center gap-2 text-lg font-semibold text-ink">
               <Flame className="size-5 text-amber-600" aria-hidden /> Panduan Saat Sedang Marah / Berkonflik
             </h3>
@@ -620,7 +620,7 @@ function ResultCard({
                 <p className="mt-2 text-sm text-emerald-950">{profile.whenAngry.doThis}</p>
               </div>
               <div className="rounded-xl border border-rose-200 bg-rose-50/60 p-4">
-                <p className="text-xs font-bold uppercase text-rose">❌ Pantangan / Jangan Dilakukan</p>
+                <p className="text-xs font-bold uppercase text-partner">❌ Pantangan / Jangan Dilakukan</p>
                 <p className="mt-2 text-sm text-rose-950">{profile.whenAngry.dontDoThis}</p>
               </div>
             </div>
@@ -716,9 +716,9 @@ function PartnerSection({
   const name = firstName(partner.name)
   if (!partnerDone || !partnerResult) {
     return (
-      <Reveal className="flex flex-col items-center rounded-[1.75rem] border border-dashed border-rose/30 bg-rose-soft/40 px-6 py-12 text-center">
+      <Reveal className="flex flex-col items-center rounded-[1.75rem] border border-dashed border-partner/30 bg-partner-soft/40 px-6 py-12 text-center">
         <m.span
-          className="flex size-14 items-center justify-center rounded-2xl bg-white text-rose shadow-sm"
+          className="flex size-14 items-center justify-center rounded-2xl bg-white text-partner shadow-sm"
           animate={{ scale: [1, 1.08, 1] }}
           transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
         >
@@ -751,7 +751,7 @@ function PartnerSection({
       {/* Bagian Cara Menghadapi Pasangan */}
       <Reveal>
         <section className="relative overflow-hidden rounded-[1.75rem] bg-ink p-6 text-white sm:p-10">
-          <div aria-hidden className="absolute inset-0 bg-[radial-gradient(60%_80%_at_0%_0%,rgb(31_77_58/0.9),transparent),radial-gradient(60%_80%_at_100%_100%,rgb(142_59_70/0.85),transparent)]" />
+          <div aria-hidden className="absolute inset-0 bg-[radial-gradient(60%_80%_at_0%_0%,color-mix(in_srgb,var(--color-primary)_90%,transparent),transparent),radial-gradient(60%_80%_at_100%_100%,color-mix(in_srgb,var(--color-partner)_85%,transparent),transparent)]" />
           <div className="relative">
             <p className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.14em] text-gold-on-dark">
               <HeartHandshake className="size-4" aria-hidden /> Cara terbaik menghadapi {name}

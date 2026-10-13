@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
-import { AlertTriangle, Check, ChevronRight, ListChecks, Plus, RotateCcw, StickyNote } from 'lucide-react'
+import { AlertTriangle, Check, ChevronRight, FileCheck2, ListChecks, Plus, RotateCcw, StickyNote } from 'lucide-react'
+import { Link } from 'react-router'
 import { useWedding } from '@/auth/WorkspaceProvider'
 import { useChecklistData } from '@/hooks/usePlanningData'
 import { Card } from '@/components/ui/Card'
@@ -165,6 +166,19 @@ export function ChecklistPage() {
               )
             })}
           </div>
+
+          {eventTab === 'legalitas' && (
+            <Link
+              to="/app/berkas"
+              className="flex items-center gap-3 rounded-card border border-primary/20 bg-primary-soft/60 p-3.5 text-sm transition-colors hover:bg-primary-soft"
+            >
+              <FileCheck2 className="size-5 shrink-0 text-primary" aria-hidden />
+              <span className="min-w-0 flex-1 text-ink-muted">
+                <strong className="text-ink">Daftar resmi berkas KUA</strong> (PMA 30/2024), dipisah untuk CPP & CPW, ada di halaman Berkas.
+              </span>
+              <ChevronRight className="size-4 shrink-0 text-primary" aria-hidden />
+            </Link>
+          )}
 
           {/* Tambah cepat: ketik lalu Enter */}
           <form onSubmit={quickAdd} className="flex gap-2">

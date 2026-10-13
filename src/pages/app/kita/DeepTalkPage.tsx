@@ -308,7 +308,7 @@ function QuestionCard({ question, ctx, weddingId, open, onToggle, onSaved }: { q
                         initial={{ opacity: 0, y: 10, filter: 'blur(6px)' }}
                         animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                         transition={{ duration: 0.6, ease: EASE_OUT }}
-                        className="mt-2 whitespace-pre-line rounded-xl rounded-tl-sm border border-rose/20 bg-rose-soft/70 px-4 py-3 text-[0.95rem] text-ink"
+                        className="mt-2 whitespace-pre-line rounded-xl rounded-tl-sm border border-partner/20 bg-partner-soft/70 px-4 py-3 text-[0.95rem] text-ink"
                       >
                         {partnerRow.answer}
                       </m.blockquote>
@@ -425,7 +425,7 @@ function CardDeck({ open, onClose, onAnswer }: { open: boolean; onClose: () => v
           <span className="absolute inset-0 flex flex-col items-center justify-center overflow-hidden rounded-[2rem] bg-primary p-8 text-center text-on-primary shadow-pop" style={{ backfaceVisibility: 'hidden' }}>
             <svg aria-hidden className="absolute size-[30rem] opacity-25" viewBox="0 0 200 200">
               <circle cx="82" cy="100" r="56" fill="none" stroke="var(--color-gold)" strokeWidth="0.7" />
-              <circle cx="118" cy="100" r="56" fill="none" stroke="var(--color-rose-light)" strokeWidth="0.7" />
+              <circle cx="118" cy="100" r="56" fill="none" stroke="var(--color-partner-light)" strokeWidth="0.7" />
             </svg>
             <MessageCircleHeart className="relative size-10 text-gold-on-dark" aria-hidden />
             <span className="relative mt-4 font-display text-4xl font-semibold">Deep talk</span>

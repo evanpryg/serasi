@@ -10,35 +10,33 @@ Token diimplementasikan di `src/index.css` (`@theme`). Komponen tidak boleh mema
 - **Hasil pencarian ui-ux-pro-max:** palet "Wedding/Event" (pink) dan gaya "Liquid Glass" ditolak:
   PRD menetapkan deep green/ivory/gold, dan efek blur/translusen menurunkan keterbacaan angka.
 
-## Warna
-| Token | Hex | Pakai untuk |
-|---|---|---|
-| primary | #1F4D3A | CTA utama, nav aktif, fokus ring |
-| primary-hover | #173B2C | hover CTA |
-| primary-soft | #E6EFE9 | latar chip/nav aktif |
-| gold | #C9A66B | ornamen, garis aksen, progress (dekoratif saja) |
-| gold-text | #84652A | teks/aksen emas (kontras ≥ 4.5:1 di ivory) |
-| gold-soft | #F5ECD9 | badge premium, highlight |
-| gold-on-dark | #D9BE85 | teks emas di atas deep green (5.3:1) |
-| rose | #8E3B46 | aksen pasangan (partner), dari buku nikah merah (6.9:1 di ivory) |
-| rose-soft | #F7E9E8 | latar elemen pasangan |
-| rose-light | #E7B7B4 | ornamen/teks di atas latar gelap |
-| canvas | #FBF8F2 | latar halaman (ivory) |
-| surface | #FFFFFF | kartu |
-| surface-muted | #F4EFE5 | latar sekunder |
-| border | #E5DDCD | garis kartu/input |
-| ink | #1C2420 | teks utama |
-| ink-muted | #545D58 | teks sekunder (≈ 6.5:1) |
-| danger | #B42318 | peringatan, melebihi anggaran |
-| warning | #9A5B07 | jatuh tempo dekat |
-| success | #2A6E4C | selesai/lunas |
-| ink-subtle | #656C67 | teks tersier/kecil (≥ 4.59:1 di semua latar terang) |
+## Warna — dua tema mengikuti peran (2026-10-13)
+Satu akun berdua: **CPP** (calon pengantin pria) dan **CPW** (calon pengantin wanita). Tema mengikuti peran user yang login,
+dipasang di `<html data-side="cpp|cpw">` (`src/lib/side.ts`, skrip kecil di `index.html` mencegah kedip). Tanpa peran (landing/login) = CPP.
+Hijau/maroon lama tidak dipakai lagi. Palet dari pencarian ui-ux-pro-max: "Luxury navy + gold" (Hotel/Hospitality) dan
+"Romantic pink + elegant gold" (Wedding), lalu digelapkan agar terasa premium dan lolos kontras.
+
+| Token | CPP · Midnight Sapphire | CPW · Rosé Champagne | Pakai untuk |
+|---|---|---|---|
+| primary | #1E3A6E (11:1 putih) | #A3385E (6.4:1 putih) | CTA, nav aktif, fokus ring, hero |
+| primary-hover | #172D57 | #872C4D | hover CTA |
+| primary-soft | #E7ECF6 | #F9E8EE | latar chip/nav aktif |
+| partner / -soft / -light | #A3385E / #F9E8EE / #E9B4C6 | #1E3A6E / #E7ECF6 / #A9BEE3 | warna **pasangan** dari sudut pandang yang login |
+| gold-on-dark | #D9BE85 (6.2:1) | #F6E6C4 (5.2:1) | teks emas di atas primary |
+| canvas | #F7F8FB porcelain | #FCF8F8 blush porcelain | latar halaman |
+| surface-muted | #EEF1F7 | #F7EDEF | latar sekunder |
+| border / -strong | #DDE2EC / #C3CBDA | #EEDDE1 / #DCC4CA | garis |
+| ink / -muted / -subtle | #141B2D / #4E5668 / #626A7C | #2A1A20 / #5E4C53 / #6E5B62 | teks (subtle ≥ 4.5:1) |
+
+Tetap (tidak ikut tema): `cpp` #1E3A6E, `cpp-soft`, `cpw` #A3385E, `cpw-soft` — untuk label/avatar/batang yang menunjuk orang
+tertentu (badge CPP/CPW, avatar, tab Berkas). Gold #C9A66B, gold-text #84652A, gold-soft #F5ECD9, status success/warning/danger sama di kedua tema.
 
 Status tidak pernah disampaikan hanya dengan warna — selalu ada ikon dan/atau teks.
 
 ## Simbol pasangan
-Warna diambil dari foto bawaan (dua buku nikah): **hijau = owner**, **maroon = partner**. Dipakai konsisten
-pada avatar, huruf tipe kepribadian, gelembung jawaban deep talk, dan cincin logo (emas + maroon muda).
+**Biru = CPP, pink = CPW** di mana pun (avatar, batang tabungan, kolom berkas). Urutan tampil selalu CPP dulu lalu CPW
+(`couple` dari `useWorkspace`, `sortCouple`). Peran disimpan di `wedding_members.side`; pilih lewat `SidePicker`
+(onboarding, dialog sekali untuk akun lama `SideGate`, Pengaturan). Mengganti peran otomatis menukar peran pasangan (RPC `set_my_side`).
 
 ## Foto
 - Foto bawaan: `public/images/default-cover.webp/.jpg`. Hero landing memakai bingkai lengkung (arch) + parallax halus.
@@ -70,7 +68,7 @@ pada avatar, huruf tipe kepribadian, gelembung jawaban deep talk, dan cincin log
 - Desktop (≥1024px): sidebar kiri tetap.
 - Desktop: grup "Perencanaan" dan "Kita berdua" (Kita, Tes kepribadian, Deep talk).
 - Mobile: bottom navigation 5 item (Beranda, Budget, Kita, Checklist, Lainnya);
-  "Lainnya" membuka sheet berisi Tabungan bersama, Vendor, Tamu, Rundown, Pengaturan, Keluar.
+  "Lainnya" membuka sheet berisi Tabungan bersama, Berkas KUA, Vendor, Tamu, Rundown, Pengaturan, Keluar.
 - Aksi yang sering dipakai tapi tersembunyi di "Lainnya" diberi pintasan di Dashboard "Tambah cepat"
   dengan deep link yang langsung memfokuskan field (contoh `/app/tabungan#catat`).
 - Target sentuh minimal 44×44px.
@@ -102,6 +100,11 @@ Komponen di `src/components/ui/PageKit.tsx`. Urutan tetap supaya pengguna tidak 
   daftar per kategori: centang · judul · tanggal kecil di bawahnya. Yang sudah beres disembunyikan (tombol tampilkan).
   Ketuk tugas → lembar bawah berisi nama, target, catatan, bagian, hapus. Biaya/jumlah/toko tidak ditampilkan
   (belanja dicatat di Anggaran). ID tugas baru selalu `crypto.randomUUID()` (kolom uuid).
+
+- Berkas KUA (`/app/berkas`): daftar resmi PMA No. 30 Tahun 2024 di `src/lib/kuaDocuments.ts` (setiap item mencantumkan pasal).
+  Kartu progres 3 kolom (CPP · CPW · Bersama) + batas daftar 10 hari kerja sebelum akad, tab per orang (hash `#cpp/#cpw/#joint`),
+  bagian "Wajib disiapkan" (centang bulat warna peran) dan "Hanya jika berlaku" (saklar Berlaku, baru bisa dicentang setelah menyala).
+  Item "umum" (pas foto, KTP wali/saksi) diberi badge "Biasanya diminta" karena bukan syarat di PMA. Status di tabel `wedding_documents`.
 
 ## Format lokal
 - Rupiah: `Rp 12.500.000` (Intl `id-ID`, tanpa desimal). Singkat: `Rp 12,5 jt`.

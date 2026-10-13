@@ -1,14 +1,17 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import type { MemberRole, Wedding } from '@/lib/database.types'
+import type { MemberRole, MemberSide, Wedding } from '@/lib/database.types'
 import { db } from '@/lib/supabase'
 import { getCurrentDemoAccount } from '@/lib/demoData'
-import { getDemoMembers, getDemoWedding } from '@/lib/demoStore'
+import { getDemoMembers, getDemoWedding, setDemoMySide } from '@/lib/demoStore'
+import { applySideTheme, isMemberSide, sortCouple } from '@/lib/side'
 import { useAuth } from './AuthProvider'
 
 
 export type Member = {
   userId: string
   role: MemberRole
+  /** null = belum memilih CPP/CPW (akun lama) */
+  side: MemberSide | null
   name: string
   avatarUrl: string | null
   isMe: boolean
@@ -23,6 +26,11 @@ type WorkspaceState = {
   members: Member[]
   me: Member | null
   partner: Member | null
+  /** Kedua anggota, CPP lebih dulu (urutan tampil di avatar & nama). */
+  couple: Member[]
+  /** false = kolom peran belum ada di database (migration 000008 belum dijalankan). */
+  sidesSupported: boolean
+  setMySide: (side: MemberSide) => Promise<void>
   refresh: () => Promise<void>
 }
 
@@ -43,6 +51,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [sidesSupported, setSidesSupported] = useState(true)
   const loadedOnce = useRef(false)
 
   const load = useCallback(async () => {
@@ -70,24 +79,30 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
     let nextMembers: Member[] = []
     if (w) {
-      const { data: rows } = await client.from('wedding_members').select('user_id, role').eq('wedding_id', w.id)
+      // Fallback tanpa kolom side bila migration peran CPP/CPW belum dijalankan.
+      let { data: rows, error: mErr } = await client.from('wedding_members').select('user_id, role, side').eq('wedding_id', w.id)
+      setSidesSupported(!mErr)
+      if (mErr) {
+        const legacy = await client.from('wedding_members').select('user_id, role').eq('wedding_id', w.id)
+        rows = (legacy.data ?? []).map((r) => ({ ...r, side: null }))
+      }
       const ids = (rows ?? []).map((r) => r.user_id)
       const { data: profiles } = ids.length
         ? await client.from('profiles').select('id, full_name, avatar_url').in('id', ids)
         : { data: [] }
-      nextMembers = (rows ?? [])
+      nextMembers = sortCouple((rows ?? [])
         .map((r) => {
           const p = profiles?.find((x) => x.id === r.user_id)
           const isMe = r.user_id === userId
           return {
             userId: r.user_id,
             role: r.role,
-            name: p?.full_name || (isMe ? fallbackName : r.role === 'owner' ? 'Pasangan' : 'Pasangan'),
+            side: isMemberSide(r.side) ? r.side : null,
+            name: p?.full_name || (isMe ? fallbackName : 'Pasangan'),
             avatarUrl: p?.avatar_url ?? null,
             isMe,
           }
-        })
-        .sort((a, b) => (a.role === 'owner' ? -1 : 1) - (b.role === 'owner' ? -1 : 1))
+        }))
     }
     setWedding(w)
     setMembers(nextMembers)
@@ -99,17 +114,42 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     void load()
   }, [load])
 
+  const setMySide = useCallback(
+    async (side: MemberSide) => {
+      const demo = getCurrentDemoAccount()
+      if (demo) {
+        setMembers(sortCouple(setDemoMySide(demo.id, side)))
+        return
+      }
+      const { error: rpcError } = await db().rpc('set_my_side', { p_side: side })
+      if (rpcError) throw new Error('Peran gagal disimpan. Coba lagi.')
+      await load()
+    },
+    [load],
+  )
+
+  const me = members.find((m) => m.isMe) ?? null
+  const mySide = me?.side ?? null
+
+  // Tema mengikuti peran user yang login: CPP biru, CPW pink.
+  useEffect(() => {
+    if (mySide) applySideTheme(mySide)
+  }, [mySide])
+
   const value = useMemo<WorkspaceState>(
     () => ({
       loading,
       error,
       wedding,
       members,
-      me: members.find((m) => m.isMe) ?? null,
+      me,
       partner: members.find((m) => !m.isMe) ?? null,
+      couple: members,
+      sidesSupported,
+      setMySide,
       refresh: load,
     }),
-    [loading, error, wedding, members, load],
+    [loading, error, wedding, members, me, sidesSupported, setMySide, load],
   )
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>

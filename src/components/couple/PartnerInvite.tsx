@@ -14,7 +14,7 @@ type ActiveInvite = { code: string; expires_at: string }
 
 /** Kartu status pasangan: terhubung, atau undang pasangan dengan kode/link. */
 export function PartnerInvite({ className }: { className?: string }) {
-  const { wedding, me, partner } = useWorkspace()
+  const { wedding, me, partner, couple } = useWorkspace()
   const [invite, setInvite] = useState<ActiveInvite | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
@@ -67,12 +67,13 @@ export function PartnerInvite({ className }: { className?: string }) {
     return (
       <div className={cn('flex items-center gap-4 rounded-card border border-border bg-surface p-5 shadow-card', className)}>
         <div className="flex -space-x-3">
-          <MemberAvatar member={me.role === 'owner' ? me : partner} />
-          <MemberAvatar member={me.role === 'owner' ? partner : me} />
+          {couple.map((mb) => (
+            <MemberAvatar key={mb.userId} member={mb} />
+          ))}
         </div>
         <div className="min-w-0">
           <p className="flex items-center gap-1.5 font-semibold text-ink">
-            <Heart className="size-4 fill-rose text-rose" aria-hidden /> Terhubung dengan {firstName(partner.name)}
+            <Heart className="size-4 fill-partner text-partner" aria-hidden /> Terhubung dengan {firstName(partner.name)}
           </p>
           <p className="text-sm text-ink-muted">Kalian berdua bisa melihat dan mengubah rencana yang sama.</p>
         </div>
@@ -81,11 +82,11 @@ export function PartnerInvite({ className }: { className?: string }) {
   }
 
   return (
-    <div className={cn('overflow-hidden rounded-card border border-rose/20 bg-gradient-to-br from-rose-soft via-surface to-gold-soft/60 p-5 shadow-card sm:p-6', className)}>
+    <div className={cn('overflow-hidden rounded-card border border-partner/20 bg-gradient-to-br from-partner-soft via-surface to-gold-soft/60 p-5 shadow-card sm:p-6', className)}>
       <div className="flex items-start gap-4">
         <div className="flex -space-x-3">
           <MemberAvatar member={me} />
-          <span className="flex size-11 items-center justify-center rounded-full border-2 border-dashed border-rose/40 bg-white text-rose ring-2 ring-white" aria-hidden>
+          <span className="flex size-11 items-center justify-center rounded-full border-2 border-dashed border-partner/40 bg-white text-partner ring-2 ring-white" aria-hidden>
             ?
           </span>
         </div>

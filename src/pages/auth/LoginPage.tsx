@@ -13,6 +13,8 @@ import { isSafeAppPath } from '@/lib/config'
 import { authErrorMessage } from '@/auth/authErrors'
 import { useAuth } from '@/auth/AuthProvider'
 import { DEMO_ACCOUNTS, getDemoAccountIdByEmail, type DemoAccountId } from '@/lib/demoData'
+import { cn } from '@/lib/cn'
+import { SIDE_LABEL, type MemberSide } from '@/lib/side'
 import { AuthLayout } from './AuthLayout'
 
 const schema = z.object({
@@ -36,8 +38,8 @@ export function LoginPage() {
     formState: { errors, isSubmitting },
   } = useForm<Values>({ resolver: zodResolver(schema) })
 
-  function handleQuickDemo(id: DemoAccountId) {
-    signInDemo(id)
+  function handleQuickDemo(id: DemoAccountId, side: MemberSide = 'cpp') {
+    signInDemo(id, side)
     navigate('/app/dashboard', { replace: true })
   }
 
@@ -80,55 +82,46 @@ export function LoginPage() {
         </p>
 
         <div className="mt-3.5 space-y-2.5">
-          {/* Demo 1: Gratis */}
-          <button
-            type="button"
-            onClick={() => handleQuickDemo('demo-gratis')}
-            className="group flex w-full cursor-pointer items-center justify-between rounded-xl border border-border bg-surface p-3 text-left transition hover:border-primary hover:bg-primary-soft/30 hover:shadow-sm"
-          >
-            <div className="min-w-0 pr-2">
-              <div className="flex items-center gap-2">
-                <UserCheck className="size-4 text-primary shrink-0" aria-hidden />
-                <span className="text-sm font-bold text-ink group-hover:text-primary">
-                  {DEMO_ACCOUNTS['demo-gratis'].label}
-                </span>
-                <Badge tone="primary" className="text-[0.65rem] py-0 px-1.5">
-                  Gratis
-                </Badge>
+          {(['demo-gratis', 'demo-premium'] as const).map((id) => {
+            const acc = DEMO_ACCOUNTS[id]
+            return (
+              <div key={id} className="rounded-xl border border-border bg-surface p-3">
+                <div className="flex items-center gap-2">
+                  {acc.isPremium ? <Crown className="size-4 shrink-0 text-gold-text" aria-hidden /> : <UserCheck className="size-4 shrink-0 text-primary" aria-hidden />}
+                  <span className="text-sm font-bold text-ink">{acc.label}</span>
+                  <Badge tone={acc.isPremium ? 'gold' : 'primary'} className="px-1.5 py-0 text-[0.65rem]">
+                    {acc.isPremium ? 'Premium' : 'Gratis'}
+                  </Badge>
+                </div>
+                <p className="mt-1 truncate text-xs text-ink-muted">{acc.description}</p>
+                {/* Satu akun berdua: pilih masuk sebagai CPP (tema biru) atau CPW (tema pink) */}
+                <div className="mt-2.5 grid grid-cols-2 gap-2">
+                  {([
+                    ['cpp', acc.me],
+                    ['cpw', acc.partner],
+                  ] as const).map(([side, member]) => (
+                    <button
+                      key={side}
+                      type="button"
+                      onClick={() => handleQuickDemo(id, side)}
+                      className={cn(
+                        'group flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-2.5 text-left transition-colors',
+                        side === 'cpp' ? 'border-cpp/25 bg-cpp-soft/60 hover:border-cpp hover:bg-cpp-soft' : 'border-cpw/25 bg-cpw-soft/60 hover:border-cpw hover:bg-cpw-soft',
+                      )}
+                    >
+                      <span className={cn('flex size-7 shrink-0 items-center justify-center rounded-full text-[0.62rem] font-bold text-white', side === 'cpp' ? 'bg-cpp' : 'bg-cpw')}>
+                        {SIDE_LABEL[side].short}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-xs font-semibold text-ink">{member.name.split(' ')[0]}</span>
+                        <span className={cn('block text-[0.68rem] font-medium', side === 'cpp' ? 'text-cpp' : 'text-cpw')}>Masuk →</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </div>
-              <p className="mt-1 truncate text-xs text-ink-muted">
-                {DEMO_ACCOUNTS['demo-gratis'].description}
-              </p>
-            </div>
-            <span className="shrink-0 text-xs font-semibold text-primary underline-offset-2 group-hover:underline">
-              Masuk →
-            </span>
-          </button>
-
-          {/* Demo 2: Berbayar */}
-          <button
-            type="button"
-            onClick={() => handleQuickDemo('demo-premium')}
-            className="group flex w-full cursor-pointer items-center justify-between rounded-xl border border-amber-300 bg-gradient-to-r from-amber-50 to-surface p-3 text-left transition hover:border-amber-500 hover:bg-amber-100/40 hover:shadow-sm"
-          >
-            <div className="min-w-0 pr-2">
-              <div className="flex items-center gap-2">
-                <Crown className="size-4 text-amber-600 shrink-0" aria-hidden />
-                <span className="text-sm font-bold text-ink group-hover:text-amber-900">
-                  {DEMO_ACCOUNTS['demo-premium'].label}
-                </span>
-                <Badge tone="gold" className="text-[0.65rem] py-0 px-1.5 bg-amber-500 text-white">
-                  👑 Premium
-                </Badge>
-              </div>
-              <p className="mt-1 truncate text-xs text-ink-muted">
-                {DEMO_ACCOUNTS['demo-premium'].description}
-              </p>
-            </div>
-            <span className="shrink-0 text-xs font-semibold text-amber-700 underline-offset-2 group-hover:underline">
-              Masuk →
-            </span>
-          </button>
+            )
+          })}
         </div>
 
         <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-2 text-[0.7rem] text-ink-subtle">

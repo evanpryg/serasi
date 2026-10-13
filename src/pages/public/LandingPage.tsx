@@ -66,7 +66,7 @@ function Hero() {
 
   return (
     <section ref={ref} className="relative overflow-hidden">
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[42rem] bg-[radial-gradient(55%_60%_at_75%_20%,var(--color-gold-soft),transparent_70%),radial-gradient(35%_40%_at_95%_70%,var(--color-rose-soft),transparent_70%)]" />
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[42rem] bg-[radial-gradient(55%_60%_at_75%_20%,var(--color-gold-soft),transparent_70%),radial-gradient(35%_40%_at_95%_70%,var(--color-partner-soft),transparent_70%)]" />
       <div className="relative mx-auto grid grid-cols-1 max-w-6xl gap-14 px-4 pb-20 pt-8 sm:px-6 sm:pt-14 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-center lg:gap-12 lg:pb-28">
         <div>
           <m.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE_OUT }}>
@@ -150,8 +150,8 @@ function Hero() {
                 <p className="text-[0.68rem] font-semibold uppercase tracking-wider text-ink-subtle">Tes kepribadian</p>
                 <div className="mt-1.5 flex items-center gap-2">
                   <span className="rounded-lg bg-primary px-2 py-1 font-display text-lg font-semibold text-white">ISFJ</span>
-                  <Heart className="size-4 fill-rose text-rose" />
-                  <span className="rounded-lg bg-rose px-2 py-1 font-display text-lg font-semibold text-white">ENFP</span>
+                  <Heart className="size-4 fill-partner text-partner" />
+                  <span className="rounded-lg bg-partner px-2 py-1 font-display text-lg font-semibold text-white">ENFP</span>
                 </div>
               </div>
             </Float>
@@ -234,7 +234,7 @@ function Features() {
           <StaggerItem className="relative overflow-hidden rounded-[1.5rem] bg-primary p-7 text-on-primary sm:col-span-2 md:p-9 lg:row-span-2">
             <svg aria-hidden className="absolute -bottom-24 -right-20 size-80 opacity-20" viewBox="0 0 200 200">
               <circle cx="80" cy="100" r="60" fill="none" stroke="var(--color-gold)" strokeWidth="1" />
-              <circle cx="120" cy="100" r="60" fill="none" stroke="var(--color-rose-light)" strokeWidth="1" />
+              <circle cx="120" cy="100" r="60" fill="none" stroke="var(--color-partner-light)" strokeWidth="1" />
             </svg>
             <Wallet className="size-7 text-gold" aria-hidden />
             <h3 className="mt-5 font-display text-4xl font-semibold">Wedding budget planner</h3>
@@ -271,7 +271,7 @@ function Features() {
 function KnowEachOther() {
   return (
     <section id="kenali" className="relative scroll-mt-20 overflow-hidden bg-ink">
-      <div aria-hidden className="absolute inset-0 bg-[radial-gradient(50%_70%_at_0%_0%,rgb(31_77_58/0.95),transparent),radial-gradient(50%_70%_at_100%_100%,rgb(142_59_70/0.8),transparent)]" />
+      <div aria-hidden className="absolute inset-0 bg-[radial-gradient(50%_70%_at_0%_0%,color-mix(in_srgb,var(--color-primary)_95%,transparent),transparent),radial-gradient(50%_70%_at_100%_100%,color-mix(in_srgb,var(--color-partner)_80%,transparent),transparent)]" />
       <div className="relative mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-28">
         <SectionHeading
           dark
@@ -295,7 +295,7 @@ function KnowEachOther() {
           </Reveal>
           <Reveal delay={0.1}>
             <article className="h-full rounded-[1.75rem] border border-white/10 bg-white/[0.06] p-5 backdrop-blur sm:p-9">
-              <span className="flex size-12 items-center justify-center rounded-2xl bg-rose text-white">
+              <span className="flex size-12 items-center justify-center rounded-2xl bg-partner text-white">
                 <MessageCircleHeart className="size-6" aria-hidden />
               </span>
               <h3 className="mt-5 font-display text-3xl font-semibold text-white">Deep talk visi & misi</h3>
@@ -329,10 +329,10 @@ function PersonalityDemo() {
             </StaggerItem>
           ))}
         </Stagger>
-        <Heart className="size-5 fill-rose-light/40 text-rose-light" />
+        <Heart className="size-5 fill-partner-light/40 text-partner-light" />
         <Stagger className="flex gap-1 sm:gap-1.5" stagger={0.08} delay={0.3}>
           {'ENFP'.split('').map((l, i) => (
-            <StaggerItem key={i} className="flex size-8 items-center justify-center rounded-lg bg-rose font-display text-xl font-semibold text-white sm:size-10 sm:rounded-xl sm:text-2xl">
+            <StaggerItem key={i} className="flex size-8 items-center justify-center rounded-lg bg-partner font-display text-xl font-semibold text-white sm:size-10 sm:rounded-xl sm:text-2xl">
               {l}
             </StaggerItem>
           ))}
@@ -360,7 +360,7 @@ function DeepTalkDemo() {
           <m.p initial={{ opacity: 0, x: -10 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: 0.2, duration: 0.5 }} className="max-w-[85%] rounded-xl rounded-tl-sm bg-primary px-3.5 py-2.5 text-sm text-white">
             Digabung untuk kebutuhan rumah, sisanya tabungan masing-masing.
           </m.p>
-          <m.p initial={{ opacity: 0, x: 10 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: 0.5, duration: 0.5 }} className="ml-auto max-w-[85%] rounded-xl rounded-tr-sm bg-rose px-3.5 py-2.5 text-sm text-white">
+          <m.p initial={{ opacity: 0, x: 10 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: 0.5, duration: 0.5 }} className="ml-auto max-w-[85%] rounded-xl rounded-tr-sm bg-partner px-3.5 py-2.5 text-sm text-white">
             Setuju, dengan catatan belanja di atas 2 juta dibicarakan dulu.
           </m.p>
         </div>
@@ -648,7 +648,7 @@ function FinalCta() {
               <source srcSet={DEFAULT_COVER.webp} type="image/webp" />
               <img src={DEFAULT_COVER.jpg} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
             </picture>
-            <div aria-hidden className="absolute inset-0 bg-gradient-to-br from-primary/90 via-primary/80 to-rose/80" />
+            <div aria-hidden className="absolute inset-0 bg-gradient-to-br from-primary/90 via-primary/80 to-partner/80" />
             <div className="relative">
               <h2 className="mx-auto max-w-2xl font-display text-4xl font-semibold leading-tight text-white sm:text-5xl">Hari bahagia dimulai dari rencana yang serasi.</h2>
               <p className="mx-auto mt-4 max-w-xl text-white/80">Buat workspace pernikahan kalian sekarang. Gratis, dan bisa langsung dipakai berdua.</p>

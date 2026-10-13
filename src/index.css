@@ -3,40 +3,53 @@
 /*
  * Design tokens — lihat design-system/wedding-planner-indonesia/MASTER.md
  * Semua komponen memakai token semantik ini, bukan hex mentah.
+ *
+ * Tema mengikuti peran user yang login (data-side di <html>, lihat src/lib/side.ts):
+ *   cpp = calon pengantin pria  → Midnight Sapphire (biru navy + champagne gold)
+ *   cpw = calon pengantin wanita → Rosé Champagne (rosé tua + champagne gold)
+ * Tanpa data-side (landing, login) memakai tema CPP.
+ * Token "partner" selalu warna pasangan dari sudut pandang yang login.
  */
 @theme {
   --font-sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
   --font-display: 'Bodoni Moda', ui-serif, Georgia, serif;
 
-  /* Primary — deep green */
-  --color-primary: #1f4d3a;
-  --color-primary-hover: #173b2c;
-  --color-primary-soft: #e6efe9;
+  /* Warna tetap per peran — dipakai untuk label CPP/CPW apa pun tema yang aktif */
+  --color-cpp: #1e3a6e;
+  --color-cpp-soft: #e7ecf6;
+  --color-cpw: #a3385e;
+  --color-cpw-soft: #f9e8ee;
+
+  /* Primary — warna peran user (CPP: sapphire navy, 11:1 dengan putih) */
+  --color-primary: #1e3a6e;
+  --color-primary-hover: #172d57;
+  --color-primary-deep: #0f1f3d;
+  --color-primary-soft: #e7ecf6;
   --color-on-primary: #ffffff;
 
-  /* Accent — soft gold (dekoratif) + varian teks yang lolos kontras */
+  /* Partner — warna pasangan (CPP melihat rosé, CPW melihat sapphire) */
+  --color-partner: #a3385e;
+  --color-partner-soft: #f9e8ee;
+  --color-partner-light: #e9b4c6;
+
+  /* Accent — champagne gold (dekoratif) + varian teks yang lolos kontras */
   --color-gold: #c9a66b;
   --color-gold-soft: #f5ecd9;
   --color-gold-text: #84652a;
-  /* Teks emas di atas latar deep green (5.3:1) */
+  /* Teks emas di atas latar primary (6.2:1 di sapphire) */
   --color-gold-on-dark: #d9be85;
 
-  /* Maroon — warna buku nikah kedua; dipakai untuk pasangan (partner) */
-  --color-rose: #8e3b46;
-  --color-rose-soft: #f7e9e8;
-  --color-rose-light: #e7b7b4;
-
-  /* Surface — ivory */
-  --color-canvas: #fbf8f2;
+  /* Surface — porcelain dingin */
+  --color-canvas: #f7f8fb;
   --color-surface: #ffffff;
-  --color-surface-muted: #f4efe5;
-  --color-border: #e5ddcd;
-  --color-border-strong: #cfc4ad;
+  --color-surface-muted: #eef1f7;
+  --color-border: #dde2ec;
+  --color-border-strong: #c3cbda;
 
   /* Text */
-  --color-ink: #1c2420;
-  --color-ink-muted: #545d58;
-  --color-ink-subtle: #656c67;
+  --color-ink: #141b2d;
+  --color-ink-muted: #4e5668;
+  --color-ink-subtle: #626a7c;
 
   /* Status (selalu dipasangkan dengan ikon/teks, tidak hanya warna) */
   --color-success: #2a6e4c;
@@ -47,11 +60,38 @@
   --color-danger-soft: #fdecea;
 
   --radius-card: 1rem;
-  --shadow-card: 0 1px 2px rgb(28 36 32 / 0.04), 0 4px 16px -8px rgb(28 36 32 / 0.08);
-  --shadow-pop: 0 12px 40px -12px rgb(28 36 32 / 0.25);
+  --shadow-card: 0 1px 2px rgb(20 27 45 / 0.04), 0 4px 16px -8px rgb(20 27 45 / 0.08);
+  --shadow-pop: 0 12px 40px -12px rgb(20 27 45 / 0.25);
 
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
-  --shadow-glow: 0 24px 60px -24px rgb(31 77 58 / 0.45);
+  --shadow-glow: 0 24px 60px -24px color-mix(in srgb, var(--color-primary) 50%, transparent);
+}
+
+/* CPW — Rosé Champagne. Primary 6.4:1 dengan putih; ink-subtle ≥ 5:1 di latar terang. */
+:root[data-side='cpw'] {
+  --color-primary: #a3385e;
+  --color-primary-hover: #872c4d;
+  --color-primary-deep: #5a1a33;
+  --color-primary-soft: #f9e8ee;
+
+  --color-partner: #1e3a6e;
+  --color-partner-soft: #e7ecf6;
+  --color-partner-light: #a9bee3;
+
+  /* Emas lebih terang agar tetap ≥ 4.5:1 di atas rosé */
+  --color-gold-on-dark: #f6e6c4;
+
+  --color-canvas: #fcf8f8;
+  --color-surface-muted: #f7edef;
+  --color-border: #eedde1;
+  --color-border-strong: #dcc4ca;
+
+  --color-ink: #2a1a20;
+  --color-ink-muted: #5e4c53;
+  --color-ink-subtle: #6e5b62;
+
+  --shadow-card: 0 1px 2px rgb(42 26 32 / 0.04), 0 4px 16px -8px rgb(42 26 32 / 0.09);
+  --shadow-pop: 0 12px 40px -12px rgb(42 26 32 / 0.25);
 }
 
 @layer base {
@@ -61,6 +101,7 @@
   }
   body {
     @apply bg-canvas text-ink font-sans antialiased;
+    transition: background-color 400ms var(--ease-out-soft), color 400ms var(--ease-out-soft);
     font-size: 1rem;
     line-height: 1.55;
   }

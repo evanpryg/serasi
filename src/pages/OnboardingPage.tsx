@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { Alert } from '@/components/ui/Feedback'
 import { Logo } from '@/components/ui/Logo'
 import { BudgetFields, EventFields, StyleFields } from '@/components/wedding/WeddingFields'
+import { SidePicker } from '@/components/couple/SidePicker'
 import { useAuth } from '@/auth/AuthProvider'
 import { useWorkspace } from '@/auth/WorkspaceProvider'
 import { db } from '@/lib/supabase'
@@ -16,6 +17,7 @@ import { setFlash } from '@/lib/flash'
 import { isValidInviteCode, normalizeInviteCode, pendingInvite } from '@/lib/invite'
 import { m, AnimatePresence } from '@/components/motion'
 import { weddingSchema, type WeddingFormInput, type WeddingFormValues } from '@/lib/wedding'
+import type { MemberSide } from '@/lib/side'
 
 const steps = [
   { title: 'Tentang acaramu', subtitle: 'Informasi dasar untuk menyusun checklist yang relevan.', fields: ['title', 'partnerNames', 'weddingDate', 'city', 'eventTypes'] },
@@ -29,6 +31,8 @@ export function OnboardingPage() {
   const { refresh } = useWorkspace()
   const [step, setStep] = useState(0)
   const [autoAllocate, setAutoAllocate] = useState(true)
+  const [side, setSide] = useState<MemberSide | null>(null)
+  const [sideError, setSideError] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
 
@@ -61,6 +65,10 @@ export function OnboardingPage() {
 
   async function handleNext() {
     const valid = await form.trigger([...current.fields])
+    if (step === 0 && !side) {
+      setSideError(true)
+      return
+    }
     if (valid) goTo(step + 1)
   }
 
@@ -83,6 +91,8 @@ export function OnboardingPage() {
       // 23505 = workspace sudah ada (mis. dua tab) → lanjutkan saja ke dashboard.
       if (err.code !== '23505') return setError('Profil pernikahan gagal disimpan. Periksa koneksi lalu coba lagi.')
     }
+    // Peran CPP/CPW. Bila gagal, user diminta memilih lagi saat masuk aplikasi.
+    if (side) await db().rpc('set_my_side', { p_side: side })
     setFlash('Workspace pernikahanmu siap. Kategori anggaran dan checklist dasar sudah dibuat.')
     // refresh() membuat OnboardingGate langsung mengarahkan ke dashboard.
     await refresh()
@@ -140,7 +150,28 @@ export function OnboardingPage() {
           <p className="mt-1 text-ink-muted">{current.subtitle}</p>
 
           <div key={step} className="mt-7 animate-fade-up">
-            {step === 0 && <EventFields form={form} />}
+            {step === 0 && (
+              <div className="space-y-7">
+                <fieldset>
+                  <legend className="text-sm font-semibold text-ink">Kamu calon pengantin…</legend>
+                  <p className="mt-0.5 text-sm text-ink-muted">Warna aplikasi mengikuti peranmu. Pasangan yang diundang otomatis mendapat peran satunya.</p>
+                  <SidePicker
+                    value={side}
+                    onChange={(s) => {
+                      setSide(s)
+                      setSideError(false)
+                    }}
+                    className="mt-3"
+                  />
+                  {sideError && (
+                    <p role="alert" className="mt-2 text-sm text-danger">
+                      Pilih calon pengantin pria atau wanita dulu.
+                    </p>
+                  )}
+                </fieldset>
+                <EventFields form={form} />
+              </div>
+            )}
             {step === 1 && (
               <div className="space-y-6">
                 <BudgetFields form={form} />
@@ -210,14 +241,14 @@ function JoinWithCode() {
   }, [open])
 
   return (
-    <div className="mt-5 rounded-2xl border border-rose/20 bg-rose-soft/60 p-4">
+    <div className="mt-5 rounded-2xl border border-partner/20 bg-partner-soft/60 p-4">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         className="flex w-full cursor-pointer items-center gap-3 text-left"
       >
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white text-rose">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white text-partner">
           <Heart className="size-5" aria-hidden />
         </span>
         <span className="flex-1">

@@ -7,11 +7,14 @@ import type {
   PersonalityResult,
   RundownItem,
   SavingsEntry,
+  MemberSide,
   Task,
   Wedding,
+  WeddingDocument,
   WeddingVendor,
 } from './database.types'
-import { DEMO_ACCOUNTS, type DemoAccountId } from './demoData'
+import { DEMO_ACCOUNTS, getCurrentDemoAccount, type DemoAccountId } from './demoData'
+import { otherSide } from './side'
 import type { DashboardData } from '@/hooks/useDashboardData'
 import type { Member } from '@/auth/WorkspaceProvider'
 
@@ -26,6 +29,7 @@ const keyPersonality = (id: DemoAccountId) => `serasi:demo_personality_${id}`
 const keyDeepTalk = (id: DemoAccountId) => `serasi:demo_deeptalk_${id}`
 const keyTasks = (id: DemoAccountId) => `serasi:checklist_${id}`
 const keySavings = (id: DemoAccountId) => `serasi:demo_savings_${id}`
+const keyDocuments = (id: DemoAccountId) => `serasi:demo_documents_${id}`
 
 function getStored<T>(key: string, fallback: T): T {
   try {
@@ -469,7 +473,20 @@ export function getDynamicDemoDashboardData(demoId: DemoAccountId): DashboardDat
 export function getDemoMembers(demoId: DemoAccountId): Member[] {
   const account = DEMO_ACCOUNTS[demoId]
   const initial: Member[] = account ? [account.me, account.partner] : []
-  return getStored<Member[]>(keyMembers(demoId), initial)
+  // isMe mengikuti sudut pandang demo yang aktif (CPP/CPW); data lama tanpa side diisi dari role.
+  const meId = getCurrentDemoAccount()?.user.id ?? account?.me.userId
+  return getStored<Member[]>(keyMembers(demoId), initial).map((m) => ({
+    ...m,
+    side: m.side ?? (m.role === 'owner' ? 'cpp' : 'cpw'),
+    isMe: m.userId === meId,
+  }))
+}
+
+/** Tukar peran CPP/CPW di akun demo (meniru RPC set_my_side). */
+export function setDemoMySide(demoId: DemoAccountId, side: MemberSide): Member[] {
+  const next = getDemoMembers(demoId).map((m) => ({ ...m, side: m.isMe ? side : otherSide(side) }))
+  saveDemoMembers(demoId, next)
+  return next
 }
 
 export function saveDemoMembers(demoId: DemoAccountId, members: Member[]): void {
@@ -488,4 +505,15 @@ export function updateDemoMemberName(demoId: DemoAccountId, userId: string, name
   const next = members.map((m) => (m.userId === userId ? { ...m, name } : m))
   saveDemoMembers(demoId, next)
   return next
+}
+
+// ---------------------------------------------------------------------------
+// BERKAS KUA
+// ---------------------------------------------------------------------------
+export function getDemoDocuments(demoId: DemoAccountId): WeddingDocument[] {
+  return getStored<WeddingDocument[]>(keyDocuments(demoId), [])
+}
+
+export function saveDemoDocuments(demoId: DemoAccountId, list: WeddingDocument[]): void {
+  setStored(keyDocuments(demoId), list)
 }

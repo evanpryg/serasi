@@ -11,6 +11,7 @@ import { EmptyState, ErrorState, Skeleton } from '@/components/ui/Feedback'
 import { ChipGroup, ConfirmDialog, HowTo, IconButton, PageHeader, useConfirm } from '@/components/ui/PageKit'
 import { AnimatePresence, CountUp, EASE_OUT, m } from '@/components/motion'
 import { cn } from '@/lib/cn'
+import { SIDE_TONE, resolveSide } from '@/lib/side'
 import { formatDate, formatDateShort, formatRupiah, formatRupiahShort, toDateOnly } from '@/lib/format'
 import { groupSavingsByMonth, summarizeSavings, type SavingsSummary } from '@/lib/savings'
 import type { SavingsEntry } from '@/lib/database.types'
@@ -99,16 +100,16 @@ function focusAmountField() {
 // Ringkasan
 // ---------------------------------------------------------------------------
 function SummaryCard({ summary, members, weddingDate }: { summary: SavingsSummary; members: Member[]; weddingDate: string | null }) {
-  const owner = members.find((mb) => mb.role === 'owner')
-  const partner = members.find((mb) => mb.role === 'partner')
+  // members sudah berurutan CPP lalu CPW; warna batang mengikuti peran masing-masing.
+  const [owner, partner] = members as [Member | undefined, Member | undefined]
   const ownerTotal = owner ? (summary.byMember[owner.userId]?.total ?? 0) : 0
   const partnerTotal = partner ? (summary.byMember[partner.userId]?.total ?? 0) : 0
   const scale = Math.max(summary.target, summary.collected, 1)
 
   // Lapisan bertumpuk memakai scaleX (bukan width): kumulatif, yang terpanjang di bawah.
   const layers = [
-    { key: 'partner', value: summary.initialFunds + ownerTotal + partnerTotal, className: 'bg-rose' },
-    { key: 'owner', value: summary.initialFunds + ownerTotal, className: 'bg-primary' },
+    { key: 'partner', value: summary.initialFunds + ownerTotal + partnerTotal, className: partner ? SIDE_TONE[resolveSide(partner)].bg : 'bg-partner' },
+    { key: 'owner', value: summary.initialFunds + ownerTotal, className: owner ? SIDE_TONE[resolveSide(owner)].bg : 'bg-primary' },
     { key: 'initial', value: summary.initialFunds, className: 'bg-gold' },
   ]
 

@@ -6,9 +6,9 @@ export function LogoMark({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 32 32" className={cn('size-8', className)} aria-hidden>
       <rect width="32" height="32" rx="9" fill="var(--color-primary)" />
-      {/* Dua cincin: emas & maroon muda — dua pribadi yang serasi */}
+      {/* Dua cincin: emas & warna pasangan — dua pribadi yang serasi */}
       <circle cx="12.8" cy="16" r="6" fill="none" stroke="var(--color-gold)" strokeWidth="2" />
-      <circle cx="19.2" cy="16" r="6" fill="none" stroke="var(--color-rose-light)" strokeWidth="2" />
+      <circle cx="19.2" cy="16" r="6" fill="none" stroke="var(--color-partner-light)" strokeWidth="2" />
     </svg>
   )
 }

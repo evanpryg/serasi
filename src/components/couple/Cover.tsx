@@ -5,6 +5,7 @@ import { useWorkspace } from '@/auth/WorkspaceProvider'
 import { DEFAULT_COVER } from '@/lib/config'
 import { resetCoverPhoto, signedCoverUrl, uploadCoverPhoto, validateCoverFile } from '@/lib/cover'
 import { cn } from '@/lib/cn'
+import { SIDE_TONE, resolveSide } from '@/lib/side'
 import type { Member } from '@/auth/WorkspaceProvider'
 
 /** URL foto sampul: foto pasangan (signed URL privat) atau foto bawaan. */
@@ -158,7 +159,7 @@ export function MemberAvatar({
     <span
       className={cn(
         'inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold text-white ring-2 ring-white select-none',
-        member.role === 'owner' ? 'bg-primary' : 'bg-rose',
+        SIDE_TONE[resolveSide(member)].bg,
         sizes[size],
         className,
       )}

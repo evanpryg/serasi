@@ -4,7 +4,17 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#1F4D3A" />
+    <meta name="theme-color" content="#1E3A6E" />
+    <script>
+      // Pasang tema CPP/CPW sebelum aplikasi dimuat agar tidak berkedip (lihat src/lib/side.ts).
+      try {
+        var s = localStorage.getItem('serasi:side')
+        if (s === 'cpp' || s === 'cpw') {
+          document.documentElement.dataset.side = s
+          if (s === 'cpw') document.querySelector('meta[name="theme-color"]').setAttribute('content', '#A3385E')
+        }
+      } catch (e) {}
+    </script>
     <meta name="description" content="Serasi: rencanakan pernikahan berdua. Anggaran, vendor, checklist, tes kepribadian, dan deep talk untuk calon pengantin Indonesia." />
     <title>Serasi — Wedding planner untuk berdua</title>
     <link rel="preload" as="image" href="/images/default-cover.webp" type="image/webp" />
