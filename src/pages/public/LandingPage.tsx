@@ -161,7 +161,7 @@ function Hero() {
             <Float amplitude={9} duration={7} delay={0.8}>
               <div aria-hidden className="rounded-2xl border border-white/60 bg-white/85 p-3.5 shadow-pop backdrop-blur-md">
                 <p className="text-[0.68rem] font-semibold uppercase tracking-wider text-ink-subtle">Sisa anggaran</p>
-                <p className="tabular font-display text-2xl font-semibold text-ink">Rp 86,5 jt</p>
+                <p className="tabular font-num text-2xl font-semibold text-ink">Rp 86,5 jt</p>
                 <div className="mt-1.5 h-1.5 w-32 overflow-hidden rounded-full bg-surface-muted">
                   <div className="h-full w-[58%] rounded-full bg-gold" />
                 </div>

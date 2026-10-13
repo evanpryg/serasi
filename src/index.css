@@ -5,8 +5,8 @@
  * Semua komponen memakai token semantik ini, bukan hex mentah.
  */
 @theme {
-  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
-  --font-display: 'Cormorant', ui-serif, Georgia, serif;
+  --font-sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Bodoni Moda', ui-serif, Georgia, serif;
 
   /* Primary — deep green */
   --color-primary: #1f4d3a;
@@ -82,13 +82,23 @@
 
 @utility font-display {
   font-family: var(--font-display);
-  letter-spacing: -0.01em;
+  font-optical-sizing: auto;
+  font-variant-numeric: lining-nums;
+  letter-spacing: -0.005em;
+}
+
+/* Angka besar (rupiah, persen, hitungan): sans tegak, digit sama lebar, rapat */
+@utility font-num {
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+  letter-spacing: -0.025em;
 }
 
 /* Angka finansial: digit selebar sama agar mudah dibandingkan */
 @utility tabular {
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: 'tnum' 1;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
 }
 
 @utility safe-bottom {

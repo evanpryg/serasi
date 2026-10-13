@@ -86,7 +86,7 @@ export function Stat({ label, value, hint, tone = 'ink', icon }: { label: string
         {icon}
         {label}
       </p>
-      <p className={cn('mt-0.5 font-display text-2xl font-bold tabular sm:text-[1.7rem]', toneClass)}>{value}</p>
+      <p className={cn('mt-0.5 font-num text-2xl font-bold tabular sm:text-[1.7rem]', toneClass)}>{value}</p>
       {hint && <p className="text-xs text-ink-subtle">{hint}</p>}
     </div>
   )

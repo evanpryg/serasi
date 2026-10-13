@@ -184,7 +184,7 @@ function SummaryTile({ label, value, tone }: { label: string; value: number | st
   return (
     <div className="rounded-card border border-border bg-surface p-4 shadow-card">
       <p className="text-xs font-semibold text-ink-muted">{label}</p>
-      <p className={cn('tabular mt-1 font-display text-3xl font-semibold', color)}>{value}</p>
+      <p className={cn('tabular mt-1 font-num text-3xl font-semibold', color)}>{value}</p>
     </div>
   )
 }

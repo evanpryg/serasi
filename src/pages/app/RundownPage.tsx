@@ -127,7 +127,7 @@ export function RundownPage() {
             return (
               <li key={item.id} className="grid grid-cols-[4.25rem_1fr] gap-3 sm:grid-cols-[5.5rem_1fr] sm:gap-4">
                 <div className="pt-4 text-right">
-                  <p className="font-display text-xl font-bold leading-none text-ink tabular sm:text-2xl">{timeOf(item.starts_at)}</p>
+                  <p className="font-num text-xl font-bold leading-none text-ink tabular sm:text-2xl">{timeOf(item.starts_at)}</p>
                   {item.ends_at && <p className="mt-1 text-xs text-ink-subtle tabular">s.d. {timeOf(item.ends_at)}</p>}
                 </div>
                 <Card className={clash ? 'border-danger/40 p-4 sm:p-5' : 'p-4 sm:p-5'}>

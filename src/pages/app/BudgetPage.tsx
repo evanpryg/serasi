@@ -1,17 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { AlertTriangle, CalendarClock, CheckCircle2, Plus, Wallet } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { useWedding } from '@/auth/WorkspaceProvider'
 import { useBudgetData } from '@/hooks/usePlanningData'
 import { Card, Badge } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { EmptyState, ErrorState, Skeleton } from '@/components/ui/Feedback'
-import { ConfirmDialog, HowTo, PageHeader, Stat, useConfirm } from '@/components/ui/PageKit'
+import { ConfirmDialog, HowTo, PageHeader, useConfirm } from '@/components/ui/PageKit'
 import { m } from '@/components/motion'
 import { cn } from '@/lib/cn'
-import { formatDate, formatRupiah, relativeDueLabel } from '@/lib/format'
+import { formatDateShort, formatRupiah, relativeDueLabel } from '@/lib/format'
 import { calculateFinance } from '@/lib/finance'
 import type { BudgetCategory, Expense, PaymentType } from '@/lib/database.types'
+import { removeItemPhoto, uploadItemPhoto } from '@/lib/itemPhoto'
 import { CategoryCard, type VendorLine } from './budget/CategoryCard'
 import { CategoryForm } from './budget/CategoryForm'
 
@@ -64,6 +66,15 @@ export function BudgetPage() {
   function startAdding() {
     setAdding(true)
     requestAnimationFrame(() => addRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
+  }
+
+  const uploadPhoto = (file: File) => uploadItemPhoto(wedding.id, file)
+  const removePhoto = async (path: string | null | undefined) => {
+    try {
+      await removeItemPhoto(path)
+    } catch {
+      /* file yatim tidak memengaruhi data */
+    }
   }
 
   if (state.status === 'loading') {
@@ -121,8 +132,8 @@ export function BudgetPage() {
 
   const posForm = (
     <div ref={addRef} className="scroll-mt-24">
-    <Card className="p-4 sm:p-5">
-      <h2 className="mb-3 font-semibold text-ink">Pos anggaran baru</h2>
+    <Card className="animate-fade-up p-4 sm:p-5">
+      <h3 className="mb-3 font-semibold text-ink">Pos anggaran baru</h3>
       <CategoryForm
         existingNames={categories.map((c) => c.name)}
         onSubmit={async (input) => {
@@ -142,42 +153,33 @@ export function BudgetPage() {
     <div className="space-y-6 lg:space-y-8">
       <PageHeader
         title="Anggaran"
-        description="Bagi uang ke beberapa pos, lalu tulis rincian belanjanya di dalam pos. Sisa uang dihitung otomatis."
-        actions={
-          <Button onClick={startAdding} icon={<Plus className="size-4" aria-hidden />}>
-            Tambah pos
-          </Button>
-        }
+        description="Bagi uang ke beberapa pos, lalu catat belanjanya di dalam pos. Sisa dihitung otomatis."
       />
 
       <HowTo
-        id="budget-v2"
+        id="budget-v3"
         steps={[
-          <>Buat <strong className="text-ink">pos</strong> beserta jatahnya, misalnya Seserahan Rp 5 jt.</>,
-          <>Buka posnya, tulis <strong className="text-ink">barang yang mau dibeli</strong>, harga, dan link tokonya.</>,
+          <>Buat <strong className="text-ink">pos</strong> beserta jatahnya (tombol di bawah daftar), misalnya Seserahan Rp 5 jt.</>,
+          <>Ketuk pos, tekan <strong className="text-ink">Tambah item</strong>: nama, harga, foto, atau link tokonya.</>,
           <><strong className="text-ink">Centang</strong> item yang sudah dibayar. Sisa uang pos langsung diperbarui.</>,
         ]}
       />
 
-      {/* Ringkasan: satu angka utama + bar bertumpuk */}
-      <Card className="p-5 sm:p-6">
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-sm text-ink-muted">{over ? 'Anggaran terlampaui' : 'Sisa anggaran (belum dibayarkan)'}</p>
-            <p className={cn('font-display text-4xl font-bold tabular sm:text-5xl', over ? 'text-danger' : 'text-ink')}>
-              {over && '−'}
-              {formatRupiah(Math.abs(remaining))}
-            </p>
-          </div>
-          <p className="text-sm text-ink-muted">
-            dari total anggaran <strong className="text-ink tabular">{formatRupiah(total)}</strong>
-          </p>
-        </div>
+      {/* Ringkasan: satu angka utama + bar bertumpuk + tiga baris angka */}
+      <Card className="p-4 sm:p-6">
+        <p className="text-sm text-ink-muted">{over ? 'Anggaran terlampaui' : 'Sisa anggaran'}</p>
+        <p className={cn('font-num text-[2.1rem] font-semibold leading-tight sm:text-5xl', over ? 'text-danger' : 'text-ink')}>
+          {over && '−'}
+          {formatRupiah(Math.abs(remaining))}
+        </p>
+        <p className="text-sm text-ink-muted">
+          dari total <span className="font-semibold text-ink tabular">{formatRupiah(total)}</span>
+        </p>
 
         <div
           role="img"
           aria-label={`Sudah dibayar ${formatRupiah(paid)}, belum dibayar ${formatRupiah(upcoming)}, dari total ${formatRupiah(total)}`}
-          className="relative mt-5 h-3 overflow-hidden rounded-full bg-surface-muted"
+          className="relative mt-4 h-2 overflow-hidden rounded-full bg-surface-muted"
         >
           <m.div
             className={cn('absolute inset-y-0 left-0 w-full origin-left rounded-full', over ? 'bg-danger/40' : 'bg-gold')}
@@ -193,70 +195,48 @@ export function BudgetPage() {
           />
         </div>
 
-        {!over && upcoming > 0 && (
-          <p className={cn('mt-3 flex items-start gap-2 text-sm', afterPlans < 0 ? 'text-danger' : 'text-ink-muted')}>
-            {afterPlans < 0 && <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />}
-            {afterPlans < 0 ? (
-              <span>
-                Jika semua rencana dibayar, anggaran akan lebih <strong className="tabular">{formatRupiah(-afterPlans)}</strong>. Kurangi rincian atau
-                naikkan jatah pos.
-              </span>
-            ) : (
-              <span>
-                Setelah semua rencana dibayar, sisanya <strong className="text-ink tabular">{formatRupiah(afterPlans)}</strong>.
-              </span>
-            )}
-          </p>
-        )}
-
-        <dl className="mt-5 grid gap-4 border-t border-border pt-4 sm:grid-cols-3">
-          <Stat
-            label="Sudah dibayar"
-            icon={<span className="size-2.5 rounded-full bg-primary" aria-hidden />}
-            value={formatRupiah(paid)}
-            hint="Item yang sudah dicentang & pembayaran vendor"
-          />
-          <Stat
-            label="Belum dibayar"
-            icon={<span className="size-2.5 rounded-full bg-gold" aria-hidden />}
-            value={formatRupiah(upcoming)}
-            hint="Rencana belanja & sisa tagihan vendor"
-          />
-          <Stat
-            label="Uang yang masih ada"
-            icon={<Wallet className="size-3.5" aria-hidden />}
+        <dl className="mt-4 divide-y divide-border sm:grid sm:grid-cols-3 sm:gap-4 sm:divide-y-0">
+          <SummaryRow dot="bg-primary" label="Sudah dibayar" value={formatRupiah(paid)} />
+          <SummaryRow dot="bg-gold" label="Belum dibayar" value={formatRupiah(upcoming)} />
+          <SummaryRow
+            icon={<Wallet className="size-3.5 text-ink-subtle" aria-hidden />}
+            label="Uang yang ada"
             value={formatRupiah(fin.cashOnHand)}
-            hint={
-              shortfall > 0 ? (
-                <span className="text-warning">Kurang {formatRupiah(shortfall)} untuk membayar semua rencana</span>
-              ) : (
-                'Cukup untuk semua yang belum dibayar'
-              )
-            }
+            tone={shortfall > 0 ? 'text-warning' : undefined}
           />
         </dl>
+
+        {(shortfall > 0 || (!over && afterPlans < 0)) && (
+          <p className="mt-3 flex items-start gap-2 rounded-lg bg-warning-soft px-3 py-2 text-sm text-warning">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
+            <span>
+              {!over && afterPlans < 0 ? (
+                <>
+                  Jika semua rencana dibayar, anggaran lebih <strong className="tabular">{formatRupiah(-afterPlans)}</strong>.
+                </>
+              ) : (
+                <>
+                  Uang kurang <strong className="tabular">{formatRupiah(shortfall)}</strong> untuk membayar semua rencana.
+                </>
+              )}
+            </span>
+          </p>
+        )}
       </Card>
 
-      <section aria-labelledby="pos-heading" className="space-y-3">
-        <div className="flex items-end justify-between gap-3">
-          <div>
-            <h2 id="pos-heading" className="font-display text-2xl font-semibold text-ink">
-              Pos anggaran
-            </h2>
-            <p className="text-sm text-ink-muted">Ketuk pos untuk melihat dan menambah rinciannya.</p>
-          </div>
-          {categories.length > 0 && !adding && (
-            <Button variant="secondary" size="sm" onClick={startAdding} icon={<Plus className="size-4" aria-hidden />}>
-              Pos baru
-            </Button>
-          )}
+      <section aria-labelledby="pos-heading" className="space-y-2.5 sm:space-y-3">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 id="pos-heading" className="font-display text-2xl font-semibold text-ink">
+            Pos anggaran
+          </h2>
+          {categories.length > 0 && <p className="text-sm text-ink-muted">{categories.length} pos</p>}
         </div>
 
         {categories.length === 0 && !adding ? (
           <EmptyState
             icon={<Wallet className="size-7" aria-hidden />}
             title="Belum ada pos anggaran"
-            description="Pos adalah jatah uang untuk tiap kebutuhan, misalnya Seserahan Rp 5 jt. Di dalamnya kamu bisa menulis barang apa saja yang mau dibeli."
+            description="Pos adalah jatah uang untuk tiap kebutuhan, misalnya Seserahan Rp 5 jt. Di dalamnya kamu bisa mencatat barang apa saja yang mau dibeli."
             action={
               <Button onClick={startAdding} icon={<Plus className="size-4" aria-hidden />}>
                 Buat pos pertama
@@ -280,15 +260,28 @@ export function BudgetPage() {
                 onAskDeleteItem={confirmItem.ask}
                 onUpdateCategory={(input) => updateCategory(cat.id, input)}
                 onAskDeleteCategory={() => confirmPos.ask(cat)}
+                uploadPhoto={uploadPhoto}
+                removePhoto={removePhoto}
               />
             ))}
-            {adding && posForm}
+            {adding ? (
+              posForm
+            ) : (
+              <button
+                type="button"
+                onClick={startAdding}
+                className="flex min-h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-card border border-dashed border-border-strong text-sm font-semibold text-primary transition-colors hover:border-primary hover:bg-primary-soft/50"
+              >
+                <Plus className="size-4" aria-hidden />
+                Tambah pos
+              </button>
+            )}
           </>
         )}
       </section>
 
       {payments.length > 0 && (
-        <section aria-labelledby="bayar-heading" className="space-y-4">
+        <section aria-labelledby="bayar-heading" className="space-y-3">
           <div>
             <h2 id="bayar-heading" className="font-display text-2xl font-semibold text-ink">
               Jadwal bayar vendor
@@ -310,7 +303,7 @@ export function BudgetPage() {
                   title={p.notes ?? 'Pembayaran vendor'}
                   type={PAYMENT_TYPE[p.payment_type]}
                   amount={p.amount}
-                  meta={p.due_date ? `Jatuh tempo ${formatDate(p.due_date)}` : 'Tanggal belum ditentukan'}
+                  meta={p.due_date ? `jatuh tempo ${formatDateShort(p.due_date)}` : 'tanggal belum ditentukan'}
                   badge={
                     p.due_date ? (
                       <Badge tone={late ? 'danger' : 'warning'}>
@@ -331,7 +324,7 @@ export function BudgetPage() {
                   title={p.notes ?? 'Pembayaran vendor'}
                   type={PAYMENT_TYPE[p.payment_type]}
                   amount={p.amount}
-                  meta={p.payment_date ? `Dibayar ${formatDate(p.payment_date)}` : p.fund_source ?? ''}
+                  meta={p.payment_date ? `dibayar ${formatDateShort(p.payment_date)}` : p.fund_source ?? ''}
                   badge={
                     p.status === 'paid' ? (
                       <Badge tone="success">
@@ -358,7 +351,12 @@ export function BudgetPage() {
             anggaran dihitung ulang.
           </>
         }
-        onConfirm={() => (confirmItem.target ? deleteExpense(confirmItem.target.id) : undefined)}
+        onConfirm={async () => {
+          const target = confirmItem.target
+          if (!target) return
+          await deleteExpense(target.id)
+          void removePhoto(target.proof_path)
+        }}
         onClose={confirmItem.close}
       />
       <ConfirmDialog
@@ -376,7 +374,13 @@ export function BudgetPage() {
           )
         })()}
         confirmLabel="Ya, hapus pos"
-        onConfirm={() => (confirmPos.target ? deleteCategory(confirmPos.target.id) : undefined)}
+        onConfirm={async () => {
+          const target = confirmPos.target
+          if (!target) return
+          const photos = expenses.filter((e) => e.category_id === target.id).map((e) => e.proof_path)
+          await deleteCategory(target.id)
+          photos.forEach((path) => void removePhoto(path))
+        }}
         onClose={confirmPos.close}
       />
     </div>
@@ -400,18 +404,31 @@ function PaymentGroup({ title, empty, children }: { title: string; empty?: strin
 
 function PaymentRow({ title, type, amount, meta, badge }: { title: string; type: string; amount: number; meta: string; badge: React.ReactNode }) {
   return (
-    <li className="flex items-start gap-3 p-4 sm:items-center sm:px-6">
-      <div className="min-w-0 flex-1">
-        <p className="font-semibold text-ink">
-          <span className="mr-2 rounded-md bg-surface-muted px-1.5 py-0.5 text-xs font-semibold text-ink-muted">{type}</span>
-          {title}
-        </p>
-        {meta && <p className="mt-0.5 text-sm text-ink-muted">{meta}</p>}
+    <li className="px-4 py-3 sm:px-6">
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="min-w-0 truncate font-medium text-ink">{title}</p>
+        <span className="shrink-0 font-semibold text-ink tabular">{formatRupiah(amount)}</span>
       </div>
-      <div className="flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-3">
-        <span className="font-semibold text-ink tabular">{formatRupiah(amount)}</span>
+      <div className="mt-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <p className="text-xs text-ink-muted">
+          <span className="font-semibold">{type}</span>
+          {meta && ` · ${meta}`}
+        </p>
         {badge}
       </div>
     </li>
+  )
+}
+
+function SummaryRow({ label, value, dot, icon, tone }: { label: string; value: string; dot?: string; icon?: ReactNode; tone?: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 py-2 sm:block sm:py-0">
+      <dt className="flex items-center gap-1.5 text-sm text-ink-muted">
+        {dot && <span className={cn('size-2 rounded-full', dot)} aria-hidden />}
+        {icon}
+        {label}
+      </dt>
+      <dd className={cn('font-num text-base font-semibold sm:mt-0.5 sm:text-xl', tone ?? 'text-ink')}>{value}</dd>
+    </div>
   )
 }

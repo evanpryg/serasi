@@ -117,7 +117,7 @@ function SummaryCard({ summary, members, weddingDate }: { summary: SavingsSummar
       <div className="flex flex-col gap-1">
         <div>
           <p className="text-sm text-ink-muted">Dana terkumpul untuk pernikahan</p>
-          <CountUp value={summary.collected} format={formatRupiah} className="block whitespace-nowrap font-display text-4xl font-bold text-ink tabular sm:text-5xl" />
+          <CountUp value={summary.collected} format={formatRupiah} className="block whitespace-nowrap font-num text-4xl font-bold text-ink tabular sm:text-5xl" />
         </div>
         {summary.target > 0 ? (
           <p className="text-sm text-ink-muted">

@@ -689,11 +689,19 @@ export const INITIAL_CHECKLIST_TEMPLATES: TemplateTaskDef[] = [
   },
 ]
 
-export function buildInitialTasks(weddingId: string, weddingDateStr: string | null): Task[] {
+/**
+ * Bangun daftar tugas dari template.
+ * `fresh: true` (mulai ulang oleh pengguna) = semua belum dicentang dan tanpa contoh biaya/toko;
+ * tanpa opsi, contoh progres ikut terisi (dipakai akun demo).
+ */
+export function buildInitialTasks(weddingId: string, weddingDateStr: string | null, opts: { fresh?: boolean } = {}): Task[] {
   const weddingDate = weddingDateStr ? parseDateOnly(weddingDateStr) : null
   const now = new Date()
 
-  return INITIAL_CHECKLIST_TEMPLATES.map((tmpl, index) => {
+  return INITIAL_CHECKLIST_TEMPLATES.map((source, index) => {
+    const tmpl: TemplateTaskDef = opts.fresh
+      ? { ...source, status: 'todo', actual_cost: null, vendor_store_name: undefined, product_url: undefined, item_status: undefined }
+      : source
     let dueDate: string | null = null
     if (weddingDate) {
       const targetDate = new Date(weddingDate)

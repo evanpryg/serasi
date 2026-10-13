@@ -107,7 +107,7 @@ export function PartnerInvite({ className }: { className?: string }) {
                 <div className="flex flex-col gap-3 rounded-xl border border-border bg-white/80 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wider text-ink-subtle">Kode undangan</p>
-                    <p className="tabular font-display text-3xl font-semibold tracking-[0.12em] text-ink">{formatInviteCode(invite.code)}</p>
+                    <p className="tabular font-num text-3xl font-semibold tracking-[0.12em] text-ink">{formatInviteCode(invite.code)}</p>
                     <p className="text-xs text-ink-muted">Berlaku sampai {formatDate(invite.expires_at.slice(0, 10))}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">

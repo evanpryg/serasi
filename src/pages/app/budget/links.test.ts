@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { linkLabel, normalizeLink } from './links'
+import { linkLabel, linkPreview, normalizeLink } from './links'
 
 describe('normalizeLink', () => {
   it('kosong berarti tanpa link', () => {
@@ -24,5 +24,33 @@ describe('linkLabel', () => {
 
   it('domain lain ditampilkan apa adanya tanpa www', () => {
     expect(linkLabel('https://www.toko-kue.com/a')).toBe('toko-kue.com')
+  })
+})
+
+describe('linkPreview', () => {
+  it('membaca nama produk Shopee dari alamatnya', () => {
+    expect(linkPreview('https://shopee.co.id/Set-Alat-Sholat-Seserahan-Sage-i.123456.7890123')).toEqual({
+      store: 'Shopee',
+      title: 'Set Alat Sholat Seserahan Sage',
+      shop: null,
+      isSearch: false,
+    })
+  })
+
+  it('Tokopedia: segmen pertama adalah nama toko', () => {
+    const p = linkPreview('https://www.tokopedia.com/batikdanarhadi/kemeja-batik-sutra-pria')
+    expect(p.store).toBe('Tokopedia')
+    expect(p.title).toBe('Kemeja batik sutra pria')
+    expect(p.shop).toBe('batikdanarhadi')
+  })
+
+  it('link pencarian menampilkan kata kuncinya', () => {
+    const p = linkPreview('https://shopee.co.id/search?keyword=set%20seserahan')
+    expect(p).toMatchObject({ title: 'set seserahan', isSearch: true })
+  })
+
+  it('link pendek tanpa nama produk → title null', () => {
+    expect(linkPreview('https://id.shp.ee/AbC12xY').title).toBeNull()
+    expect(linkPreview('https://id.shp.ee/AbC12xY').store).toBe('Shopee')
   })
 })

@@ -52,6 +52,8 @@ export type ExpenseInput = {
   expense_date?: string | null
   link_url?: string | null
   notes?: string | null
+  /** Foto item (lihat lib/itemPhoto). */
+  proof_path?: string | null
 }
 
 export type CategoryInput = { name: string; planned_amount: number; notes?: string | null; is_reserve?: boolean }
@@ -113,11 +115,12 @@ export function useBudgetData(weddingId: string) {
         expense_date: input.status === 'paid' ? (input.expense_date ?? todayStr()) : (input.expense_date ?? null),
         link_url: input.link_url ?? null,
         notes: input.notes ?? null,
+        proof_path: input.proof_path ?? null,
         fund_source: null,
       }
       const demo = getCurrentDemoAccount()
       if (demo) {
-        addDemoExpense(demo.id, { ...row, vendor_id: null, proof_path: null })
+        addDemoExpense(demo.id, { ...row, vendor_id: null })
         void load()
         return
       }
@@ -459,7 +462,8 @@ export function useChecklistData(weddingId: string, _weddingDateStr: string | nu
       const demo = getCurrentDemoAccount()
       const now = new Date().toISOString()
       const newTask: Task = {
-        id: `custom_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        // Kolom tasks.id bertipe uuid: ID teks (mis. custom_123) ditolak database.
+        id: crypto.randomUUID(),
         wedding_id: weddingId,
         title: taskData.title?.trim() || 'Tugas Baru',
         category: taskData.category?.trim() || 'Lainnya',
@@ -542,7 +546,10 @@ export function useChecklistData(weddingId: string, _weddingDateStr: string | nu
         .update({ ...updates, updated_at: now } as any)
         .eq('id', taskId)
 
-      if (error) void load()
+      if (error) {
+        void load()
+        throw error
+      }
     },
     [load, saveDemoState],
   )
@@ -570,24 +577,6 @@ export function useChecklistData(weddingId: string, _weddingDateStr: string | nu
     [load, saveDemoState],
   )
 
-  const duplicateTask = useCallback(
-    async (taskId: string) => {
-      if (state.status !== 'ready') return
-      const original = state.data.find((t) => t.id === taskId)
-      if (!original) return
-
-      await createTask({
-        ...original,
-        title: `${original.title} (Salinan)`,
-        template_key: null,
-        is_custom: true,
-        status: 'todo',
-        completed_at: null,
-      })
-    },
-    [state, createTask],
-  )
-
   const resetToTemplates = useCallback(
     async (newTasks: Task[]) => {
       const demo = getCurrentDemoAccount()
@@ -598,11 +587,16 @@ export function useChecklistData(weddingId: string, _weddingDateStr: string | nu
         return
       }
 
+      const rows = newTasks.map((t) => ({ ...t, id: crypto.randomUUID() }))
       const client = db()
-      await client.from('tasks').delete().eq('wedding_id', weddingId)
-      const { error } = await client.from('tasks').insert(newTasks as any)
-      if (error) void load()
-      else setState({ status: 'ready', data: newTasks })
+      const del = await client.from('tasks').delete().eq('wedding_id', weddingId)
+      if (del.error) throw del.error
+      const { error } = await client.from('tasks').insert(rows as any)
+      if (error) {
+        void load()
+        throw error
+      }
+      setState({ status: 'ready', data: rows })
     },
     [weddingId, load],
   )
@@ -614,7 +608,6 @@ export function useChecklistData(weddingId: string, _weddingDateStr: string | nu
     createTask,
     updateTask,
     deleteTask,
-    duplicateTask,
     resetToTemplates,
   }
 }

@@ -63,7 +63,7 @@ export function DashboardPage() {
             <div className="flex items-center gap-3 self-start rounded-2xl border border-white/25 bg-white/15 px-4 py-3 backdrop-blur-md sm:self-auto">
               <CalendarHeart className="size-6 text-gold-on-dark" aria-hidden />
               <div>
-                <p className="tabular font-display text-3xl font-semibold leading-none">
+                <p className="tabular font-num text-3xl font-semibold leading-none">
                   {daysLeft === 0 ? 'Hari ini' : <CountUp value={daysLeft} format={(n) => String(n)} />}
                 </p>
                 {daysLeft > 0 && <p className="text-xs font-medium text-white/80">hari menuju hari H</p>}
@@ -128,7 +128,7 @@ function FinanceHero({ summary }: { summary: FinanceSummary }) {
           <h2 id="finance-title" className="text-sm font-medium text-on-primary/75">
             Sisa anggaran
           </h2>
-          <p className={cn('tabular mt-1 font-display text-5xl font-semibold leading-none sm:text-6xl', over && 'text-[#ffd5cf]')}>
+          <p className={cn('tabular mt-1 font-num text-5xl font-semibold leading-none sm:text-6xl', over && 'text-[#ffd5cf]')}>
             <CountUp value={summary.remainingBudget} format={formatRupiah} />
           </p>
           <p className="mt-3 text-sm text-on-primary/75">
@@ -319,7 +319,7 @@ function PlanningProgress({ done, total, chosenVendors, duePayments }: { done: n
             <span className="text-sm text-ink-muted">
               <span className="tabular font-semibold text-ink">{done}</span> dari <span className="tabular">{total}</span> tugas selesai
             </span>
-            <span className="tabular font-display text-2xl font-semibold text-primary">{pct}%</span>
+            <span className="tabular font-num text-2xl font-semibold text-primary">{pct}%</span>
           </div>
           <ProgressBar value={pct} label="Persentase tugas selesai" />
         </div>

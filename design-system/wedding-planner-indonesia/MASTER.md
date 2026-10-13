@@ -45,10 +45,12 @@ pada avatar, huruf tipe kepribadian, gelembung jawaban deep talk, dan cincin log
 - Foto pengguna: privat (signed URL), fade-in + scale saat termuat; teks di atas foto selalu diberi gradien gelap.
 
 ## Tipografi
-- **Display:** Cormorant 500–700 — hanya untuk judul besar (hero, judul halaman, angka hero).
-- **Body/UI:** Plus Jakarta Sans 400–700 (dibuat di Indonesia; mendukung tabular figures).
+- **Display:** Bodoni Moda (variabel, optical size) 500–700 — judul saja (hero, judul halaman/seksi). Kesan mewah editorial.
+- **Body/UI + angka:** Geist 400–700 — bersih, digit tegak sejajar.
+- **Angka besar** (rupiah, persen, hitungan) memakai utilitas `font-num` (Geist + tabular + lining + tracking rapat),
+  **bukan** font serif. Cormorant ditolak (2026-10-13): angka gaya lama (old-style) naik-turun dan terlihat jelek.
 - Body 16px, line-height 1.55. Teks minimum 12px untuk label kecil.
-- Angka rupiah selalu `tabular` (tabular-nums).
+- Angka rupiah kecil selalu `tabular` (tabular-nums + lining-nums).
 
 ## Spasi & bentuk
 - Skala 4px; jarak antarkartu 16–24px; padding kartu 20–24px.
@@ -86,12 +88,20 @@ Komponen di `src/components/ui/PageKit.tsx`. Urutan tetap supaya pengguna tidak 
   memuat nominal ("Simpan Rp 1.000.000"), konfirmasi sukses inline yang hilang sendiri (4 dtk).
   Target: catat setoran dalam 2 ketukan. Layar ≥1280px: form menempel di kolom kanan.
 - Angka keuangan di halaman mana pun memakai `calculateFinance` (lib/finance) agar sama dengan Dashboard.
-- Anggaran: **tanpa tab**. Pos = kartu accordion (`h3 > button`, isi hanya span) dengan "Sisa" besar di kanan
-  (jatah − sudah dibayar − rencana). Rincian item tinggal di dalam posnya: centang bulat = sudah dibayar,
-  link toko ("Buka di Shopee ↗", tab baru), catatan, ubah/hapus inline. Form tambah item selalu ada di bawah
-  rincian (nama + harga cukup, Enter menyimpan, fokus kembali ke nama); pratinjau "Sisa pos setelah ini".
-  Pos baru dibuat inline (chip nama umum → fokus ke jatah), lalu langsung terbuka dengan fokus di tambah item.
-  Pos yang terbuka disimpan di hash `#pos-<id>`. Kontrak vendor tampil read-only di posnya.
+- Anggaran: **tanpa tab**, padat di mobile. Ringkasan = angka sisa + bar + 3 baris (dibayar/belum/uang ada).
+  Pos = kartu accordion (`h3 > button`, isi hanya span): baris 1 nama (satu baris) + chevron, baris 2 info
+  (badge · n item · jatah singkat "Rp 5 jt") dan "sisa Rp …" di kanan. **Tombol "Tambah pos" hanya di bawah daftar.**
+  Isi pos: baris item ringkas (centang bulat = lunas · foto kecil · nama · harga). Ketuk item → detail:
+  foto besar (ketuk = layar penuh), kartu pratinjau link (nama produk dibaca dari URL Shopee/Tokopedia,
+  tanpa jaringan), catatan, Tambah foto / Ubah / Hapus. Form **tidak** langsung tampil: tombol "+ Tambah item"
+  membuka form (nama + harga, foto, link & catatan dilipat); setelah simpan form tetap terbuka untuk item
+  berikutnya, "Selesai" menutup. Foto item disimpan di `expenses.proof_path` (bucket privat `wedding-files/<id>/items/`,
+  dikompres WebP ≤1280px; akun demo: data URL). Pos yang terbuka disimpan di hash `#pos-<id>`.
+- Checklist: **sederhana, bukan formulir administratif.** Kartu progres (persen + bar + tombol "n tugas lewat target"),
+  chip bagian (geser horizontal di mobile), kolom tambah cepat (ketik + Enter, masuk grup "Tugas kami"),
+  daftar per kategori: centang · judul · tanggal kecil di bawahnya. Yang sudah beres disembunyikan (tombol tampilkan).
+  Ketuk tugas → lembar bawah berisi nama, target, catatan, bagian, hapus. Biaya/jumlah/toko tidak ditampilkan
+  (belanja dicatat di Anggaran). ID tugas baru selalu `crypto.randomUUID()` (kolom uuid).
 
 ## Format lokal
 - Rupiah: `Rp 12.500.000` (Intl `id-ID`, tanpa desimal). Singkat: `Rp 12,5 jt`.
