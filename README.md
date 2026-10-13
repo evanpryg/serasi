@@ -8,7 +8,7 @@ Website perencanaan pernikahan untuk calon pengantin Indonesia. **Satu workspace
 
 | Sprint | Isi | Status |
 |---|---|---|
-| 1. Foundation | Vite/React/TS/Tailwind, design system, layout, Supabase client, registrasi/login email, Google OAuth, reset password, logout, route privat | ✅ |
+| 1. Foundation | Vite/React/TS/Tailwind, design system, layout, Supabase client, registrasi/login email, reset password, logout, route privat | ✅ |
 | 2. Database & workspace | Skema + migration + RLS, onboarding 3 langkah, dashboard dari data nyata, pengaturan profil, uji isolasi antar-user | ✅ |
 | + Pasangan | Akun berdua (undangan link/kode, maks. 2 anggota), foto sampul (default + prewedding), tes kepribadian 16 tipe, deep talk 40 pertanyaan, animasi | ✅ |
 | 3. Budgeting | CRUD kategori, transaksi, kontrak & pembayaran vendor, simulasi | ⏳ (rumus & tes sudah ada di `src/lib/finance.ts`) |
@@ -50,28 +50,27 @@ Tanpa `.env.local`, landing page tetap bisa dibuka; halaman login/aplikasi menam
    - **Redirect URLs:** `http://localhost:5173/auth/callback`, `http://localhost:5173/reset-password`, serta versi domain produksi keduanya. Link undangan pasangan (`/join/KODE`) tidak perlu didaftarkan karena bukan redirect OAuth (mis. `https://namasitus.netlify.app/auth/callback`)
 6. *Authentication → Providers → Email*: atur apakah konfirmasi email wajib. Aplikasi menangani kedua mode.
 
-### Google OAuth
+### Login email & reset password
 
-1. Google Cloud Console → buat/pilih proyek → **OAuth consent screen** → isi nama aplikasi, domain, dan email kontak.
-2. **Credentials → Create OAuth client ID → Web application.**
-   - *Authorized JavaScript origins:* domain website (dev & produksi)
-   - *Authorized redirect URIs:* **URL callback yang ditampilkan Supabase** di *Authentication → Providers → Google* (bentuknya `https://<project-ref>.supabase.co/auth/v1/callback`). Salin dari dashboard, jangan menebak.
-3. Masukkan Client ID & Client Secret di Supabase → *Providers → Google* → aktifkan.
+Login hanya memakai email + password (Google OAuth sudah dihapus). Di Supabase → *Authentication*:
 
-Alurnya: tombol Google → Google → callback Supabase → kembali ke `/auth/callback` di website. Penukaran kode PKCE dilakukan oleh Supabase client (`detectSessionInUrl`); aplikasi tidak mengelola token sendiri. Penautan identitas email dan Google untuk email yang sama mengikuti mekanisme Supabase (akun dengan email terverifikasi ditautkan otomatis), bukan klaim dari frontend.
+1. **URL Configuration:** *Site URL* = domain produksi; *Redirect URLs* tambahkan `https://<domain>/auth/callback` dan `https://<domain>/reset-password` (plus versi `http://localhost:5173/...` untuk lokal).
+2. **Providers → Email:** aktifkan. Konfirmasi email boleh aktif maupun nonaktif.
+3. Lupa password: `/forgot-password` mengirim link → `/reset-password` (form password baru). Link memakai PKCE sehingga harus dibuka di browser yang sama dengan tempat meminta link.
+4. SMTP bawaan Supabase dibatasi beberapa email per jam; untuk produksi pasang SMTP sendiri (*Project Settings → Authentication → SMTP*).
 
 ## Deploy ke Netlify
 
 1. Push ke GitHub, lalu *Add new site → Import from Git*.
 2. Build command `npm run build`, publish directory `dist` (sudah diatur di `netlify.toml`, termasuk fallback SPA `/* → /index.html` dan security header).
 3. `VITE_SUPABASE_URL` dan `VITE_SUPABASE_PUBLISHABLE_KEY` sudah diisi di `[build.environment]` pada `netlify.toml` (keduanya nilai publik). Opsional `VITE_CONTACT_EMAIL` lewat *Site configuration → Environment variables*.
-4. Tambahkan domain produksi ke Supabase (Site URL + Redirect URLs) dan ke Google (Authorized JavaScript origins).
-5. Uji di domain produksi: daftar, login email, login Google, reset password, refresh di `/app/dashboard` (tidak boleh 404).
+4. Tambahkan domain produksi ke Supabase (Site URL + Redirect URLs) .
+5. Uji di domain produksi: daftar, login email, lupa & reset password, refresh di `/app/dashboard` (tidak boleh 404).
 
 ## Arsitektur & keamanan
 
 ```
-Browser (React) ──► Supabase Auth      (sesi, OAuth Google, reset password)
+Browser (React) ──► Supabase Auth      (sesi, reset password)
                 └─► Supabase Postgres  (semua akses dibatasi RLS)
                 └─► Supabase Storage   (bucket privat wedding-files/<wedding_id>/...)
 Netlify hanya menyajikan file statis.

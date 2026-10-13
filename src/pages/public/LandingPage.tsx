@@ -509,7 +509,7 @@ function VendorSection() {
 
 function HowItWorks() {
   const steps = [
-    { title: 'Daftar gratis', text: 'Masuk dengan email atau akun Google, lalu isi profil pernikahan. Kategori anggaran dan checklist langsung dibuat.' },
+    { title: 'Daftar gratis', text: 'Daftar dengan email, lalu isi profil pernikahan. Kategori anggaran dan checklist langsung dibuat.' },
     { title: 'Undang pasangan', text: 'Kirim link undangan lewat WhatsApp. Pasanganmu bergabung ke workspace yang sama.' },
     { title: 'Rencanakan & kenali', text: 'Kelola anggaran dan vendor bersama, kerjakan tes kepribadian, dan buka deep talk satu per satu.' },
   ]

@@ -9,8 +9,7 @@ import { PasswordField, TextField } from '@/components/ui/Field'
 import { Alert } from '@/components/ui/Feedback'
 import { db } from '@/lib/supabase'
 import { authErrorMessage } from '@/auth/authErrors'
-import { AuthLayout, Divider } from './AuthLayout'
-import { GoogleButton } from './GoogleButton'
+import { AuthLayout } from './AuthLayout'
 
 export const passwordRule = z
   .string()
@@ -85,8 +84,6 @@ export function RegisterPage() {
         </>
       }
     >
-      <GoogleButton />
-      <Divider label="atau dengan email" />
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
         <TextField label="Nama lengkap" autoComplete="name" error={errors.fullName?.message} {...register('fullName')} />
         <TextField label="Email" type="email" autoComplete="email" inputMode="email" error={errors.email?.message} {...register('email')} />

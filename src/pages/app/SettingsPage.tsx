@@ -160,7 +160,6 @@ function AccountCard() {
     setStatus({ tone: 'success', text: 'Profil akun tersimpan.' })
   }
 
-  const providers = (user?.app_metadata?.providers as string[] | undefined) ?? []
 
   return (
     <Card>
@@ -174,7 +173,7 @@ function AccountCard() {
               value={user?.email ?? ''}
               readOnly
               disabled
-              hint={providers.length ? `Metode login: ${providers.map((p) => (p === 'google' ? 'Google' : 'Email')).join(', ')}` : undefined}
+              hint="Metode login: Email"
             />
           </div>
           {status && <Alert tone={status.tone}>{status.text}</Alert>}

@@ -19,10 +19,22 @@ const schema = z
   .refine((v) => v.password === v.confirm, { path: ['confirm'], message: 'Konfirmasi password tidak sama.' })
 type Values = z.infer<typeof schema>
 
+/** Link kedaluwarsa/terpakai: Supabase mengembalikan ?error_code= (PKCE) atau #error_code= (implicit). */
+function readLinkError(): string | null {
+  const search = new URLSearchParams(window.location.search)
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+  const code = search.get('error_code') ?? hash.get('error_code') ?? search.get('error') ?? hash.get('error')
+  if (!code) return null
+  return code === 'otp_expired' || code === 'access_denied'
+    ? 'Link sudah kedaluwarsa atau pernah dipakai. Silakan minta link baru.'
+    : 'Link tidak dapat diverifikasi. Silakan minta link baru.'
+}
+
 export function ResetPasswordPage() {
   const { configured, loading, session } = useAuth()
   const navigate = useNavigate()
   const [error, setError] = useState<string | null>(null)
+  const [linkError] = useState(readLinkError)
   const {
     register,
     handleSubmit,
@@ -45,7 +57,7 @@ export function ResetPasswordPage() {
       {!session ? (
         <div className="space-y-4">
           <Alert tone="warning" title="Link tidak valid atau sudah kedaluwarsa">
-            Minta link baru dan buka di browser yang sama dengan tempat kamu memintanya.
+            {linkError ?? 'Minta link baru dan buka di browser yang sama dengan tempat kamu memintanya.'}
           </Alert>
           <Link to="/forgot-password" className="inline-block font-semibold text-primary underline-offset-4 hover:underline">
             Minta link baru

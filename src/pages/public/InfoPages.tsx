@@ -25,7 +25,7 @@ export function PrivacyPage() {
       <p>{APP_NAME} membantu kamu merencanakan pernikahan. Kami hanya meminta data yang diperlukan untuk fitur tersebut.</p>
       <h2>Data yang kami simpan</h2>
       <ul>
-        <li>Data akun: nama, email, dan foto profil dari Google jika kamu masuk dengan Google.</li>
+        <li>Data akun: nama dan email yang kamu gunakan untuk mendaftar.</li>
         <li>Data perencanaan: profil pernikahan, anggaran, vendor, pembayaran, tugas, tamu, dan rundown yang kamu masukkan.</li>
         <li>File yang kamu unggah, seperti bukti pembayaran atau kontrak, disimpan di penyimpanan privat.</li>
       </ul>

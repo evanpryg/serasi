@@ -13,8 +13,7 @@ import { isSafeAppPath } from '@/lib/config'
 import { authErrorMessage } from '@/auth/authErrors'
 import { useAuth } from '@/auth/AuthProvider'
 import { DEMO_ACCOUNTS, getDemoAccountIdByEmail, type DemoAccountId } from '@/lib/demoData'
-import { AuthLayout, Divider } from './AuthLayout'
-import { GoogleButton } from './GoogleButton'
+import { AuthLayout } from './AuthLayout'
 
 const schema = z.object({
   email: z.string().trim().min(1, 'Email wajib diisi.').email('Format email belum benar.'),
@@ -146,9 +145,6 @@ export function LoginPage() {
           </button>
         </div>
       </div>
-
-      <GoogleButton redirectAfter={target} />
-      <Divider label="atau masuk manual" />
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
         <TextField label="Email" type="email" autoComplete="email" inputMode="email" error={errors.email?.message} {...register('email')} />
