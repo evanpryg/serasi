@@ -4,6 +4,10 @@
 
 [build.environment]
   NODE_VERSION = "22"
+  # Nilai publik (ikut ter-bundle ke frontend). Keamanan data dijaga oleh RLS, bukan oleh key ini.
+  # JANGAN taruh service role / secret key di sini.
+  VITE_SUPABASE_URL = "https://isncolaaghkrdktmccnq.supabase.co"
+  VITE_SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlzbmNvbGFhZ2hrcmRrdG1jY25xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE4MjY5ODgsImV4cCI6MjEwNzQwMjk4OH0.q81Vo87Oc89egpZFD2OcE-gNS-m8VTh-zVgISeFkfao"
 
 # SPA fallback: semua route (termasuk /auth/callback dan /app/*) dilayani index.html
 [[redirects]]

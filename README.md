@@ -64,7 +64,7 @@ Alurnya: tombol Google → Google → callback Supabase → kembali ke `/auth/ca
 
 1. Push ke GitHub, lalu *Add new site → Import from Git*.
 2. Build command `npm run build`, publish directory `dist` (sudah diatur di `netlify.toml`, termasuk fallback SPA `/* → /index.html` dan security header).
-3. *Site configuration → Environment variables:* `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, opsional `VITE_CONTACT_EMAIL`.
+3. `VITE_SUPABASE_URL` dan `VITE_SUPABASE_PUBLISHABLE_KEY` sudah diisi di `[build.environment]` pada `netlify.toml` (keduanya nilai publik). Opsional `VITE_CONTACT_EMAIL` lewat *Site configuration → Environment variables*.
 4. Tambahkan domain produksi ke Supabase (Site URL + Redirect URLs) dan ke Google (Authorized JavaScript origins).
 5. Uji di domain produksi: daftar, login email, login Google, reset password, refresh di `/app/dashboard` (tidak boleh 404).
 
