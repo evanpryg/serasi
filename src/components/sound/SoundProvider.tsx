@@ -11,7 +11,6 @@ interface SoundContextValue {
 
 const SoundContext = createContext<SoundContextValue | null>(null)
 
-const STORAGE_KEY = 'serasi_bgm_enabled'
 const DEFAULT_VOLUME = 0.35
 
 export function SoundProvider({ children }: { children: ReactNode }) {
@@ -19,8 +18,10 @@ export function SoundProvider({ children }: { children: ReactNode }) {
   const [volume, setVolumeState] = useState(DEFAULT_VOLUME)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
+  const userPausedRef = useRef(false)
+
   useEffect(() => {
-    // Inisialisasi elemen audio sekali di tingkat root
+    // Inisialisasi elemen audio di tingkat root
     const audio = new Audio('/audio/bgm.mp3')
     audio.loop = true
     audio.preload = 'auto'
@@ -38,52 +39,60 @@ export function SoundProvider({ children }: { children: ReactNode }) {
     audio.addEventListener('pause', onPause)
     audio.addEventListener('error', onError)
 
-    const tryAutoPlay = () => {
-      if (localStorage.getItem(STORAGE_KEY) === 'false') return
-      audio.play().then(() => {
-        setIsPlaying(true)
-      }).catch(() => {
-        // Jika browser memblokir autoplay tanpa gesture, pasang listener di interaksi pertama
-        const onFirstGesture = () => {
-          if (localStorage.getItem(STORAGE_KEY) !== 'false') {
-            audio.play().then(() => setIsPlaying(true)).catch(() => {})
-          }
-          cleanupGestureListeners()
-        }
+    // Event interaksi yang valid menurut browser user activation policy
+    const gestureEvents = ['click', 'pointerdown', 'touchstart', 'touchend', 'keydown'] as const
 
-        const events = ['click', 'pointerdown', 'touchstart', 'keydown', 'scroll', 'wheel'] as const
-        const cleanupGestureListeners = () => {
-          for (const ev of events) {
-            window.removeEventListener(ev, onFirstGesture)
-            document.removeEventListener(ev, onFirstGesture)
-          }
-        }
-
-        for (const ev of events) {
-          window.addEventListener(ev, onFirstGesture, { once: true, passive: true })
-          document.addEventListener(ev, onFirstGesture, { once: true, passive: true })
-        }
-      })
+    const removeGestureListeners = () => {
+      for (const ev of gestureEvents) {
+        window.removeEventListener(ev, handleGesture, true)
+        document.removeEventListener(ev, handleGesture, true)
+      }
     }
 
-    tryAutoPlay()
+    const handleGesture = () => {
+      if (userPausedRef.current || !audioRef.current) return
+      audioRef.current
+        .play()
+        .then(() => {
+          setIsPlaying(true)
+          removeGestureListeners()
+        })
+        .catch(() => {
+          // Jika masih dibatasi, tunggu interaksi berikutnya
+        })
+    }
+
+    // Coba putar otomatis langsung saat web dibuka
+    audio
+      .play()
+      .then(() => {
+        setIsPlaying(true)
+      })
+      .catch(() => {
+        // Jika diblokir oleh browser Autoplay Policy, aktifkan pada sentuhan/klik pertama pengguna
+        for (const ev of gestureEvents) {
+          window.addEventListener(ev, handleGesture, { capture: true, passive: true })
+          document.addEventListener(ev, handleGesture, { capture: true, passive: true })
+        }
+      })
 
     return () => {
+      removeGestureListeners()
       audio.removeEventListener('play', onPlay)
       audio.removeEventListener('pause', onPause)
       audio.removeEventListener('error', onError)
       audio.pause()
       audioRef.current = null
     }
-
   }, [])
 
   const playSound = async () => {
     const audio = audioRef.current
     if (!audio) return
+    userPausedRef.current = false
     try {
-      localStorage.setItem(STORAGE_KEY, 'true')
       await audio.play()
+      setIsPlaying(true)
     } catch (err) {
       console.warn('Gagal memutar audio:', err)
     }
@@ -92,8 +101,9 @@ export function SoundProvider({ children }: { children: ReactNode }) {
   const pauseSound = () => {
     const audio = audioRef.current
     if (!audio) return
-    localStorage.setItem(STORAGE_KEY, 'false')
+    userPausedRef.current = true
     audio.pause()
+    setIsPlaying(false)
   }
 
   const toggleSound = () => {
