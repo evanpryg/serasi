@@ -18,11 +18,17 @@ export const passwordRule = z
   .regex(/[A-Za-z]/, 'Password harus mengandung huruf.')
   .regex(/\d/, 'Password harus mengandung angka.')
 
-const schema = z.object({
-  fullName: z.string().trim().min(2, 'Nama minimal 2 karakter.').max(120, 'Nama terlalu panjang.'),
-  email: z.string().trim().min(1, 'Email wajib diisi.').email('Format email belum benar.'),
-  password: passwordRule,
-})
+const schema = z
+  .object({
+    fullName: z.string().trim().min(2, 'Nama minimal 2 karakter.').max(120, 'Nama terlalu panjang.'),
+    email: z.string().trim().min(1, 'Email wajib diisi.').email('Format email belum benar.'),
+    password: passwordRule,
+    confirmPassword: z.string().min(1, 'Konfirmasi password wajib diisi.'),
+  })
+  .refine((v) => v.password === v.confirmPassword, {
+    path: ['confirmPassword'],
+    message: 'Konfirmasi password tidak cocok.',
+  })
 type Values = z.infer<typeof schema>
 
 export function RegisterPage() {
@@ -93,6 +99,12 @@ export function RegisterPage() {
           hint="Minimal 8 karakter, berisi huruf dan angka."
           error={errors.password?.message}
           {...register('password')}
+        />
+        <PasswordField
+          label="Konfirmasi password"
+          autoComplete="new-password"
+          error={errors.confirmPassword?.message}
+          {...register('confirmPassword')}
         />
         {error && <Alert tone="danger">{error}</Alert>}
         <Button type="submit" size="lg" className="w-full" loading={isSubmitting}>
