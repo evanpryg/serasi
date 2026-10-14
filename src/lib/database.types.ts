@@ -211,6 +211,48 @@ export type SavingsEntry = Timestamps & {
   note: string | null
 }
 
+export type Plan = Timestamps & {
+  id: string
+  name: string
+  price: number
+  is_active: boolean
+}
+
+export type WeddingEntitlement = {
+  wedding_id: string
+  plan_id: string
+  order_id: string | null
+  activated_at: string
+  activated_by: string | null
+  /** null = selamanya */
+  expires_at: string | null
+}
+
+export type PaymentOrderStatus = 'pending' | 'awaiting_verification' | 'paid' | 'rejected' | 'expired' | 'cancelled'
+
+export type PaymentOrder = Timestamps & {
+  id: string
+  code: string
+  wedding_id: string
+  user_id: string
+  plan_id: string
+  base_amount: number
+  unique_code: number
+  amount: number
+  status: PaymentOrderStatus
+  payer_name: string | null
+  claimed_at: string | null
+  reviewed_at: string | null
+  reviewed_by: string | null
+  admin_note: string | null
+  expires_at: string
+}
+
+export type AdminPaymentOrder = Pick<
+  PaymentOrder,
+  'id' | 'code' | 'wedding_id' | 'amount' | 'unique_code' | 'status' | 'payer_name' | 'claimed_at' | 'reviewed_at' | 'admin_note' | 'expires_at' | 'created_at'
+> & { wedding_title: string; user_email: string | null; user_name: string | null }
+
 type Table<Row, Required extends keyof Row> = {
   Row: Row
   Insert: Partial<Row> & Pick<Row, Required>
@@ -236,6 +278,9 @@ export type Database = {
       deeptalk_answers: Table<DeepTalkAnswer, 'wedding_id' | 'question_id' | 'answer'>
       savings_entries: Table<SavingsEntry, 'wedding_id' | 'amount'>
       wedding_documents: Table<WeddingDocument, 'wedding_id' | 'doc_key' | 'side' | 'status'>
+      plans: Table<Plan, 'id' | 'name' | 'price'>
+      wedding_entitlements: Table<WeddingEntitlement, 'wedding_id' | 'plan_id'>
+      payment_orders: Table<PaymentOrder, 'wedding_id'>
     }
     Views: { [_ in never]: never }
     Functions: {
@@ -266,6 +311,13 @@ export type Database = {
       delete_budget_category: { Args: { p_category_id: string }; Returns: undefined }
       personality_progress: { Args: { p_wedding_id: string }; Returns: { user_id: string; completed_at: string }[] }
       deeptalk_progress: { Args: { p_wedding_id: string }; Returns: { user_id: string; question_id: string }[] }
+      is_app_admin: { Args: Record<string, never>; Returns: boolean }
+      is_wedding_premium: { Args: { target_wedding_id: string }; Returns: boolean }
+      create_payment_order: { Args: { p_wedding_id: string; p_plan_id?: string }; Returns: PaymentOrder }
+      claim_payment_order: { Args: { p_order_id: string; p_payer_name?: string | null }; Returns: PaymentOrder }
+      cancel_payment_order: { Args: { p_order_id: string }; Returns: undefined }
+      admin_payment_orders: { Args: { p_status?: PaymentOrderStatus | null }; Returns: AdminPaymentOrder[] }
+      admin_review_payment: { Args: { p_order_id: string; p_approve: boolean; p_note?: string | null }; Returns: PaymentOrder }
     }
     Enums: { [_ in never]: never }
     CompositeTypes: { [_ in never]: never }

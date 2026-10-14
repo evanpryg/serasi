@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import {
   ArrowLeft,
+  Ban,
   Brain,
   Check,
   Clock,
@@ -17,7 +18,6 @@ import {
   TriangleAlert,
   Users,
   Wallet,
-  X,
 } from 'lucide-react'
 
 import { AnimatePresence, EASE_OUT, Reveal, Stagger, StaggerItem, m } from '@/components/motion'
@@ -27,6 +27,8 @@ import { Badge } from '@/components/ui/Card'
 import { Alert, ErrorState, Skeleton } from '@/components/ui/Feedback'
 import { MemberAvatar } from '@/components/couple/Cover'
 import { PartnerInvite } from '@/components/couple/PartnerInvite'
+import { PremiumBadge, premiumHref } from '@/components/premium/Premium'
+import { usePremium } from '@/hooks/usePremium'
 import { firstName, useWedding, useWorkspace, type Member } from '@/auth/WorkspaceProvider'
 import { usePersonality } from '@/hooks/useCoupleData'
 import { db } from '@/lib/supabase'
@@ -50,22 +52,16 @@ import {
 import type { PersonalityResult } from '@/lib/database.types'
 
 const draftKey = (weddingId: string, userId: string) => `serasi:personality-draft:${weddingId}:${userId}`
-const PREMIUM_STORAGE_KEY = 'serasi:premium_unlocked'
 
 export function PersonalityPage() {
   const wedding = useWedding()
   const { me, partner } = useWorkspace()
   const { state, reload } = usePersonality(wedding.id)
   const [mode, setMode] = useState<'view' | 'quiz'>('view')
-  const [isPremium, setIsPremium] = useState<boolean>(() => {
-    return localStorage.getItem(PREMIUM_STORAGE_KEY) === 'true'
-  })
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
-
-  const togglePremium = (val: boolean) => {
-    setIsPremium(val)
-    localStorage.setItem(PREMIUM_STORAGE_KEY, val ? 'true' : 'false')
-  }
+  // Status Premium dari server (lihat hooks/usePremium); tidak bisa dibuka dari browser.
+  const { isPremium } = usePremium()
+  const navigate = useNavigate()
+  const unlock = () => navigate(premiumHref('kepribadian'))
 
   if (!me) return null
   if (state.status === 'loading') return <PageSkeleton />
@@ -88,33 +84,7 @@ export function PersonalityPage() {
           </p>
         </div>
 
-        {mine && mode === 'view' && (
-          <div className="flex shrink-0 items-center gap-2">
-            {isPremium ? (
-              <div className="flex items-center gap-2 rounded-2xl border border-amber-300 bg-amber-50/80 px-3.5 py-2 text-xs font-semibold text-amber-900 shadow-sm">
-                <Crown className="size-4 text-amber-600" aria-hidden />
-                <span>Paket Premium Aktif</span>
-                <button
-                  type="button"
-                  onClick={() => togglePremium(false)}
-                  className="ml-1 cursor-pointer text-amber-700 underline hover:text-amber-950"
-                  title="Beralih ke tampilan gratis untuk simulasi"
-                >
-                  (Uji Mode Gratis)
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setShowUpgradeModal(true)}
-                className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-gold/40 bg-gradient-to-r from-amber-500/15 via-gold-soft to-amber-500/10 px-4 py-2 text-xs font-semibold text-gold-text shadow-sm transition hover:scale-[1.02] hover:border-gold"
-              >
-                <Crown className="size-4 text-gold-text" aria-hidden />
-                <span>Buka Versi Lengkap (Premium)</span>
-              </button>
-            )}
-          </div>
-        )}
+        {mine && mode === 'view' && isPremium && <PremiumBadge label="Analisis lengkap" className="self-start text-sm sm:self-end" />}
       </header>
 
       <AnimatePresence mode="wait">
@@ -146,12 +116,12 @@ export function PersonalityPage() {
                     <Crown className="size-5" aria-hidden />
                   </span>
                   <div>
-                    <p className="text-sm font-semibold text-ink">Anda sedang melihat Pratinjau Versi Gratis</p>
-                    <p className="text-xs text-ink-muted">Poin mendalam perkiraan konflik rumah tangga, saat marah, & strategi mertua terkunci.</p>
+                    <p className="text-sm font-semibold text-ink">Kamu melihat ringkasan versi Gratis</p>
+                    <p className="text-xs text-ink-muted">Perkiraan konflik rumah tangga, panduan saat marah, dan strategi menghadapi mertua ada di Premium.</p>
                   </div>
                 </div>
-                <Button size="sm" onClick={() => setShowUpgradeModal(true)} icon={<Crown className="size-3.5 text-amber-500" aria-hidden />}>
-                  Tingkatkan ke Premium
+                <Button size="sm" className="w-full sm:w-auto" onClick={unlock} icon={<Crown className="size-3.5" aria-hidden />}>
+                  Lihat Premium
                 </Button>
               </div>
             )}
@@ -162,7 +132,7 @@ export function PersonalityPage() {
               title="Hasilmu"
               isPremium={isPremium}
               onRetake={() => setMode('quiz')}
-              onUnlock={() => setShowUpgradeModal(true)}
+              onUnlock={unlock}
             />
 
             <PartnerSection
@@ -171,7 +141,7 @@ export function PersonalityPage() {
               partnerDone={partnerDone}
               mine={mine}
               isPremium={isPremium}
-              onUnlock={() => setShowUpgradeModal(true)}
+              onUnlock={unlock}
             />
           </m.div>
         )}
@@ -182,15 +152,6 @@ export function PersonalityPage() {
         obrolan mendalam untuk saling memahami, mengantisipasi konflik, dan memperkuat ikatan pernikahan.
       </p>
 
-      {showUpgradeModal && (
-        <UpgradeModal
-          onClose={() => setShowUpgradeModal(false)}
-          onActivate={() => {
-            togglePremium(true)
-            setShowUpgradeModal(false)
-          }}
-        />
-      )}
     </div>
   )
 }
@@ -616,11 +577,11 @@ function ResultCard({
                 <p className="mt-2 text-sm text-ink-muted">{profile.whenAngry.behavior}</p>
               </div>
               <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
-                <p className="text-xs font-bold uppercase text-emerald-800">✅ Yang Harus Dilakukan Pasangan</p>
+                <p className="flex items-center gap-1.5 text-xs font-bold uppercase text-emerald-800"><Check className="size-3.5" aria-hidden /> Yang harus dilakukan pasangan</p>
                 <p className="mt-2 text-sm text-emerald-950">{profile.whenAngry.doThis}</p>
               </div>
               <div className="rounded-xl border border-rose-200 bg-rose-50/60 p-4">
-                <p className="text-xs font-bold uppercase text-partner">❌ Pantangan / Jangan Dilakukan</p>
+                <p className="flex items-center gap-1.5 text-xs font-bold uppercase text-partner"><Ban className="size-3.5" aria-hidden /> Pantangan / jangan dilakukan</p>
                 <p className="mt-2 text-sm text-rose-950">{profile.whenAngry.dontDoThis}</p>
               </div>
             </div>
@@ -838,86 +799,6 @@ function PartnerSection({
           </Link>
         </Reveal>
       </section>
-    </div>
-  )
-}
-
-function UpgradeModal({ onClose, onActivate }: { onClose: () => void; onActivate: () => void }) {
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="upgrade-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/60 backdrop-blur-xs animate-fade-in"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div className="relative w-full max-w-lg overflow-hidden rounded-[1.75rem] border border-gold/40 bg-surface p-6 shadow-pop sm:p-8">
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-4 top-4 flex size-10 items-center justify-center rounded-full text-ink-muted hover:bg-surface-muted hover:text-ink cursor-pointer"
-          aria-label="Tutup"
-        >
-          <X className="size-5" aria-hidden />
-        </button>
-
-        <div className="flex items-center gap-3">
-          <span className="flex size-12 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-700">
-            <Crown className="size-6" aria-hidden />
-          </span>
-          <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-gold-text">Serasi Premium</span>
-            <h3 id="upgrade-title" className="font-display text-2xl font-bold text-ink">
-              Analisis Lengkap Karakter &amp; Rumah Tangga
-            </h3>
-          </div>
-        </div>
-
-        <p className="mt-4 text-sm text-ink-muted">
-          Pernikahan bukan hanya tentang hari H, tetapi tentang perjalanan puluhan tahun bersama. Akses laporan menyeluruh untuk memahami pasangan luar dalam:
-        </p>
-
-        <ul className="mt-5 space-y-3 text-sm text-ink">
-          <li className="flex items-start gap-2.5">
-            <span className="mt-1 size-1.5 shrink-0 rounded-full bg-gold" />
-            <span><strong>3 Perkiraan Masalah Rumah Tangga:</strong> Analisis akar pemicu konflik di masa depan &amp; solusi pencegahannya.</span>
-          </li>
-          <li className="flex items-start gap-2.5">
-            <span className="mt-1 size-1.5 shrink-0 rounded-full bg-gold" />
-            <span><strong>Protokol Saat Sedang Marah:</strong> Respon khas, Do&apos;s (yang harus dilakukan) &amp; Don&apos;ts (pantangan mutlak).</span>
-          </li>
-          <li className="flex items-start gap-2.5">
-            <span className="mt-1 size-1.5 shrink-0 rounded-full bg-gold" />
-            <span><strong>Keluarga Besar &amp; Mertua:</strong> Strategi menghadapi lingkungan sosial tanpa menimbulkan kesalahpahaman.</span>
-          </li>
-          <li className="flex items-start gap-2.5">
-            <span className="mt-1 size-1.5 shrink-0 rounded-full bg-gold" />
-            <span><strong>Finansial &amp; Ruang Pribadi:</strong> Pola belanja, kebiasaan domestik, dan kebutuhan waktu sendiri.</span>
-          </li>
-          <li className="flex items-start gap-2.5">
-            <span className="mt-1 size-1.5 shrink-0 rounded-full bg-gold" />
-            <span><strong>Dinamika Hubungan Lengkap:</strong> Analisis mendalam seluruh 4 dimensi kecocokan kalian berdua.</span>
-          </li>
-        </ul>
-
-        <div className="mt-8 flex flex-col gap-3">
-          <button
-            type="button"
-            onClick={onActivate}
-            className="flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 font-semibold text-white shadow-md hover:from-amber-700 hover:to-amber-800 transition"
-          >
-            <Crown className="size-4" aria-hidden />
-            Aktifkan Akses Premium Sekarang
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="h-10 w-full cursor-pointer text-xs font-semibold text-ink-muted hover:text-ink"
-          >
-            Nanti saja, tetap di versi gratis
-          </button>
-        </div>
-      </div>
     </div>
   )
 }

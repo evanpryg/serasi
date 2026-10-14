@@ -3,6 +3,8 @@ import { NavLink, Outlet, useLocation } from 'react-router'
 import {
   Brain,
   CalendarClock,
+  ChevronRight,
+  Crown,
   FlaskConical,
   Heart,
   LayoutDashboard,
@@ -24,9 +26,11 @@ import { MemberAvatar } from '@/components/couple/Cover'
 import { SideGate } from '@/components/couple/SidePicker'
 import { useAuth } from '@/auth/AuthProvider'
 import { firstName, useWedding, useWorkspace } from '@/auth/WorkspaceProvider'
+import { PremiumBadge } from '@/components/premium/Premium'
+import { PremiumProvider, usePremium } from '@/hooks/usePremium'
 import { getCurrentDemoAccount } from '@/lib/demoData'
 import { cn } from '@/lib/cn'
-import { formatDate } from '@/lib/format'
+import { formatDate, formatRupiahShort } from '@/lib/format'
 
 type NavItem = { to: string; label: string; icon: LucideIcon; end?: boolean }
 
@@ -58,12 +62,23 @@ const MOBILE_MORE: NavItem[] = [
   { to: '/app/vendors', label: 'Vendor', icon: Store },
   { to: '/app/guests', label: 'Tamu', icon: Users },
   { to: '/app/rundown', label: 'Rundown', icon: CalendarClock },
+  { to: '/app/premium', label: 'Premium', icon: Crown },
   SETTINGS,
 ]
 
 export function AppLayout() {
   const wedding = useWedding()
+  return (
+    <PremiumProvider weddingId={wedding.id}>
+      <AppShell />
+    </PremiumProvider>
+  )
+}
+
+function AppShell() {
+  const wedding = useWedding()
   const { me, partner, couple } = useWorkspace()
+  const { isPremium } = usePremium()
   const { signOut, user } = useAuth()
   const location = useLocation()
   const isDemo = Boolean(getCurrentDemoAccount())
@@ -99,6 +114,7 @@ export function AppLayout() {
               {partner && me ? `${couple.map((mb) => firstName(mb.name)).join(' & ')}` : wedding.title}
             </p>
             <p className="truncate text-xs text-ink-muted">{wedding.wedding_date ? formatDate(wedding.wedding_date) : wedding.city}</p>
+            {isPremium && <PremiumBadge className="mt-1" />}
           </div>
         </div>
         <nav aria-label="Navigasi utama" className="mt-6 flex-1 space-y-6">
@@ -106,6 +122,7 @@ export function AppLayout() {
           <NavGroup label="Kita berdua" items={COUPLE} accent />
           <NavGroup items={[SETTINGS]} />
         </nav>
+        {!isPremium && <UpgradeCard />}
         <div className="border-t border-border pt-4">
           {isDemo ? (
             <div className="space-y-2">
@@ -172,6 +189,26 @@ export function AppLayout() {
       <MobileNav onSignOut={() => void signOut()} isDemo={isDemo} />
       <SideGate />
     </div>
+  )
+}
+
+/** Ajakan upgrade ringkas di sidebar (hanya untuk paket Gratis). */
+function UpgradeCard() {
+  const { price } = usePremium()
+  return (
+    <NavLink
+      to="/app/premium"
+      className="mx-1 mb-4 flex items-center gap-3 rounded-xl border border-gold/40 bg-gold-soft/50 p-3 transition-colors hover:bg-gold-soft"
+    >
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-surface text-gold-text ring-1 ring-gold/30">
+        <Crown className="size-4" aria-hidden />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold text-ink">Upgrade ke Premium</span>
+        <span className="block text-xs text-ink-muted">{formatRupiahShort(price)} · sekali bayar berdua</span>
+      </span>
+      <ChevronRight className="size-4 shrink-0 text-ink-subtle" aria-hidden />
+    </NavLink>
   )
 }
 

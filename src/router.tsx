@@ -34,6 +34,8 @@ const VendorsPage = named(() => import('@/pages/app/VendorsPage'), 'VendorsPage'
 const ChecklistPage = named(() => import('@/pages/app/ChecklistPage'), 'ChecklistPage')
 const GuestsPage = named(() => import('@/pages/app/GuestsPage'), 'GuestsPage')
 const RundownPage = named(() => import('@/pages/app/RundownPage'), 'RundownPage')
+const PremiumPage = named(() => import('@/pages/app/PremiumPage'), 'PremiumPage')
+const AdminPaymentsPage = named(() => import('@/pages/app/AdminPaymentsPage'), 'AdminPaymentsPage')
 
 function Root() {
   return (
@@ -104,6 +106,8 @@ export const router = createBrowserRouter([
                   { path: 'kita/kepribadian', element: <PersonalityPage /> },
                   { path: 'kita/deeptalk', element: <DeepTalkPage /> },
                   { path: 'settings', element: <SettingsPage /> },
+                  { path: 'premium', element: <PremiumPage /> },
+                  { path: 'admin/pembayaran', element: <AdminPaymentsPage /> },
                 ],
               },
             ],

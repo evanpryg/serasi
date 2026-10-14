@@ -1,5 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react'
 import {
+  Crown,
   ArrowRight,
   Brain,
   CalendarClock,
@@ -22,8 +23,11 @@ import { useReducedMotion, useScroll, useTransform } from 'motion/react'
 import { AnimatePresence, EASE_OUT, Float, Reveal, SPRING, Stagger, StaggerItem, m } from '@/components/motion'
 import { ButtonLink } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Card'
+import { usePublicPremiumPrice } from '@/hooks/usePremium'
 import { DEFAULT_COVER } from '@/lib/config'
 import { cn } from '@/lib/cn'
+import { formatRupiah } from '@/lib/format'
+import { DEEPTALK_FREE_COUNT, FREE_GUEST_LIMIT, PLAN_ROWS, PREMIUM_HIGHLIGHTS } from '@/lib/plans'
 
 export function LandingPage() {
   return (
@@ -534,20 +538,21 @@ function HowItWorks() {
 /* ---------------------------------------------------------------- Pricing */
 
 function Pricing() {
-  const free = ['Akses berdua dalam satu workspace', 'Budget planner, kontrak, DP & pelunasan', 'Vendor tracker & checklist', 'Daftar tamu & rundown dasar', 'Tes kepribadian & 40 pertanyaan deep talk', 'Ekspor data milikmu']
-  const premium = ['Akses untuk keluarga dengan hak terbatas', 'Template adat yang lebih lengkap', 'Laporan dan ekspor lanjutan', 'Fitur lain berdasarkan masukan pengguna beta']
+  const price = usePublicPremiumPrice()
+  const free = PLAN_ROWS.filter((r) => r.free !== false).map((r) => (typeof r.free === 'string' ? `${r.label}: ${r.free}` : r.label))
   return (
     <section id="harga" className="scroll-mt-20">
       <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-28">
-        <SectionHeading center eyebrow="Paket" title="Mulai gratis. Tambah fitur saat dibutuhkan." />
+        <SectionHeading center eyebrow="Paket" title="Mulai gratis. Upgrade sekali, untuk berdua." />
         <Stagger className="mx-auto mt-12 grid max-w-4xl gap-5 md:grid-cols-2">
-          <StaggerItem className="rounded-[1.5rem] border-2 border-primary bg-surface p-7 shadow-card">
+          <StaggerItem className="flex flex-col rounded-[1.5rem] border border-border bg-surface p-7 shadow-card">
             <div className="flex items-center justify-between">
               <h3 className="font-display text-3xl font-semibold">Gratis</h3>
-              <Badge tone="primary">Tersedia</Badge>
+              <Badge tone="primary">Selamanya</Badge>
             </div>
-            <p className="mt-2 text-ink-muted">Semua yang dibutuhkan untuk merencanakan pernikahan berdua.</p>
-            <ul className="mt-6 space-y-3">
+            <p className="mt-3 font-num text-4xl font-bold tabular">Rp 0</p>
+            <p className="mt-1 text-ink-muted">Semua yang dibutuhkan untuk merencanakan pernikahan berdua.</p>
+            <ul className="mt-6 flex-1 space-y-3">
               {free.map((f) => (
                 <li key={f} className="flex items-start gap-3 text-ink">
                   <Check className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
@@ -555,24 +560,34 @@ function Pricing() {
                 </li>
               ))}
             </ul>
-            <ButtonLink to="/register" size="lg" className="mt-8 w-full">
+            <ButtonLink to="/register" variant="secondary" size="lg" className="mt-8 w-full">
               Daftar Gratis
             </ButtonLink>
           </StaggerItem>
-          <StaggerItem className="rounded-[1.5rem] border border-border bg-surface-muted/60 p-7">
+          <StaggerItem className="flex flex-col rounded-[1.5rem] border-2 border-gold bg-surface p-7 shadow-card">
             <div className="flex items-center justify-between">
-              <h3 className="font-display text-3xl font-semibold">Premium</h3>
-              <Badge tone="gold">Segera hadir</Badge>
+              <h3 className="flex items-center gap-2 font-display text-3xl font-semibold">
+                <Crown className="size-6 text-gold-text" aria-hidden /> Premium
+              </h3>
+              <Badge tone="gold">Sekali bayar</Badge>
             </div>
-            <p className="mt-2 text-ink-muted">Fitur lanjutan yang sedang dirancang. Harga akan diumumkan sebelum peluncuran.</p>
-            <ul className="mt-6 space-y-3">
-              {premium.map((f) => (
-                <li key={f} className="flex items-start gap-3 text-ink-muted">
-                  <span className="mt-2 size-1.5 shrink-0 rounded-full bg-gold" aria-hidden />
-                  {f}
+            <p className="mt-3 font-num text-4xl font-bold tabular">{formatRupiah(price)}</p>
+            <p className="mt-1 text-ink-muted">Untuk berdua, aktif selamanya. Tanpa langganan.</p>
+            <p className="mt-6 text-sm font-semibold text-ink">Semua fitur Gratis, ditambah:</p>
+            <ul className="mt-3 flex-1 space-y-3">
+              {PREMIUM_HIGHLIGHTS.map((h) => (
+                <li key={h.title} className="flex items-start gap-3 text-ink">
+                  <Check className="mt-0.5 size-5 shrink-0 text-gold-text" aria-hidden />
+                  <span>
+                    <strong className="font-semibold">{h.title}.</strong> <span className="text-ink-muted">{h.text}</span>
+                  </span>
                 </li>
               ))}
             </ul>
+            <ButtonLink to="/register" size="lg" className="mt-8 w-full">
+              Mulai gratis, upgrade kapan saja
+            </ButtonLink>
+            <p className="mt-3 text-center text-xs text-ink-subtle">Bayar dengan QRIS dari e-wallet atau m-banking apa pun.</p>
           </StaggerItem>
         </Stagger>
       </div>
@@ -583,7 +598,8 @@ function Pricing() {
 /* ---------------------------------------------------------------- FAQ */
 
 const FAQS = [
-  { q: 'Apakah benar-benar gratis?', a: 'Ya. Fitur perencanaan dasar, akses berdua, tes kepribadian, dan deep talk dapat dipakai tanpa biaya. Fitur premium akan ditawarkan terpisah dan bersifat opsional.' },
+  { q: 'Apakah benar-benar gratis?', a: `Ya. Budget, tabungan bersama, vendor, checklist, Berkas KUA, rundown, akses berdua, ringkasan tes kepribadian, ${DEEPTALK_FREE_COUNT} pertanyaan deep talk, dan daftar tamu hingga ${FREE_GUEST_LIMIT} undangan gratis selamanya. Premium opsional dan cukup dibayar sekali untuk berdua.` },
+  { q: 'Bagaimana cara membayar Premium?', a: 'Dari halaman Premium di aplikasi, pindai QRIS dengan e-wallet atau m-banking apa pun. Nominal sudah terisi otomatis. Premium aktif di akun kalian berdua setelah pembayaran kami verifikasi, biasanya kurang dari 1×24 jam.' },
   { q: 'Bagaimana pasangan saya bergabung?', a: 'Setelah membuat workspace, buka halaman Kita lalu buat link undangan. Kirim lewat WhatsApp; pasanganmu cukup daftar atau masuk, lalu otomatis terhubung. Satu workspace untuk dua orang.' },
   { q: 'Apakah pasangan bisa langsung melihat jawaban deep talk saya?', a: 'Tidak. Jawaban pasangan untuk sebuah pertanyaan baru terbuka setelah kamu menjawab pertanyaan yang sama, begitu juga hasil tes kepribadian. Tujuannya agar jawaban kalian jujur dan tidak saling memengaruhi.' },
   { q: 'Apakah tes kepribadiannya resmi?', a: 'Bukan. Tes ini terinspirasi kerangka 16 tipe kepribadian (MBTI®) dengan pernyataan yang kami susun sendiri. Gunakan sebagai bahan obrolan untuk saling memahami, bukan untuk melabeli atau menilai kecocokan.' },

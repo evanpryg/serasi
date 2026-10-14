@@ -42,13 +42,21 @@ export function PrivacyPage() {
 
 export function TermsPage() {
   return (
-    <Prose title="Syarat Penggunaan" updated="13 Oktober 2026">
+    <Prose title="Syarat Penggunaan" updated="14 Oktober 2026">
       <p>Dengan menggunakan {APP_NAME}, kamu menyetujui ketentuan berikut.</p>
       <h2>Layanan</h2>
       <p>
         {APP_NAME} adalah alat bantu perencanaan. Kami tidak menjadi pihak dalam kontrak antara kamu dan vendor, tidak memproses
-        pembayaran, dan tidak terintegrasi dengan KUA maupun Dukcapil.
+        pembayaran ke vendor, dan tidak terintegrasi dengan KUA maupun Dukcapil.
       </p>
+      <h2>Paket Gratis dan Premium</h2>
+      <ul>
+        <li>Fitur perencanaan inti dapat dipakai gratis. Batas paket Gratis tercantum di halaman Premium dalam aplikasi.</li>
+        <li>Premium dibayar sekali per workspace pernikahan melalui QRIS dan berlaku untuk kedua anggota workspace, tanpa langganan.</li>
+        <li>Premium aktif setelah pembayaran diverifikasi. Bayarlah persis sesuai nominal yang tertera agar pembayaran dapat dicocokkan.</li>
+        <li>Perubahan harga tidak memengaruhi workspace yang sudah Premium.</li>
+        <li>Kendala pembayaran dapat disampaikan kepada kami dengan menyertakan kode pembayaran (SRS-…).</li>
+      </ul>
       <h2>Informasi vendor</h2>
       <p>
         Informasi vendor dan kisaran harga dapat berubah. Selalu konfirmasi langsung ke vendor sebelum mengambil keputusan.

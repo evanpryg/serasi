@@ -4,6 +4,8 @@ import { AlertTriangle, Check, ChevronDown, ExternalLink, ImageIcon, ImagePlus, 
 import { Badge, Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { AnimatePresence, m, EASE_OUT } from '@/components/motion'
+import { PremiumBadge, premiumHref } from '@/components/premium/Premium'
+import { usePremium } from '@/hooks/usePremium'
 import { cn } from '@/lib/cn'
 import { formatDateShort, formatRupiah, formatRupiahShort } from '@/lib/format'
 import type { CategorySummary } from '@/lib/finance'
@@ -263,6 +265,7 @@ function ItemRow({ item, expanded, onToggleExpand, onTogglePaid, onEdit, onDelet
   const [lightbox, setLightbox] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [photoError, setPhotoError] = useState<string | null>(null)
+  const { isPremium } = usePremium()
   const detailId = useId()
   const preview = item.link_url ? linkPreview(item.link_url) : null
 
@@ -366,7 +369,17 @@ function ItemRow({ item, expanded, onToggleExpand, onTogglePaid, onEdit, onDelet
           )}
 
           <div className="-ml-2.5 flex flex-wrap">
-            {!item.proof_path && (
+            {!item.proof_path && !isPremium && (
+              <Link
+                to={premiumHref('foto')}
+                className="inline-flex h-9 items-center gap-1.5 rounded-xl px-2.5 text-sm font-semibold text-ink-muted transition-colors hover:bg-gold-soft/50"
+              >
+                <ImagePlus className="size-3.5" aria-hidden />
+                Tambah foto
+                <PremiumBadge />
+              </Link>
+            )}
+            {!item.proof_path && isPremium && (
               <label
                 className={cn(
                   'inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl px-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary-soft focus-within:ring-2 focus-within:ring-primary/30',

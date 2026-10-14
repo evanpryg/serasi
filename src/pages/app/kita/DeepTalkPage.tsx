@@ -7,6 +7,9 @@ import { Badge } from '@/components/ui/Card'
 import { Alert, ErrorState, Skeleton } from '@/components/ui/Feedback'
 import { MemberAvatar } from '@/components/couple/Cover'
 import { PartnerInvite } from '@/components/couple/PartnerInvite'
+import { LockedPanel } from '@/components/premium/Premium'
+import { usePremium } from '@/hooks/usePremium'
+import { DEEPTALK_TOTAL_COUNT, isFreeDeepTalkTopic } from '@/lib/plans'
 import { firstName, useWedding, useWorkspace, type Member } from '@/auth/WorkspaceProvider'
 import { useDeepTalk, type DeepTalkData } from '@/hooks/useCoupleData'
 import { db } from '@/lib/supabase'
@@ -59,6 +62,9 @@ export function DeepTalkPage() {
   const [topicId, setTopicId] = useState(TOPICS[0]!.id)
   const [openId, setOpenId] = useState<string | null>(null)
   const [deckOpen, setDeckOpen] = useState(false)
+  const { isPremium } = usePremium()
+  const canUse = (topic: string) => isPremium || isFreeDeepTalkTopic(topic)
+  const usable = useMemo(() => ALL_QUESTIONS.filter((q) => isPremium || isFreeDeepTalkTopic(q.topicId)), [isPremium])
 
   if (!me) return null
   if (state.status === 'loading')
@@ -98,7 +104,7 @@ export function DeepTalkPage() {
 
       <Reveal>
         <section aria-label="Ringkasan deep talk" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <SummaryTile label="Kamu jawab" value={`${myAnswered}/${ALL_QUESTIONS.length}`} tone="primary" />
+          <SummaryTile label="Kamu jawab" value={`${myAnswered}/${usable.length}`} tone="primary" />
           <SummaryTile label="Sejalan" value={count('sejalan')} tone="success" />
           <SummaryTile label="Perlu dibahas" value={count('perlu_dibahas') + count('perlu_dinilai')} tone="warning" />
           <SummaryTile label="Berbeda" value={count('berbeda')} tone="danger" />
@@ -110,6 +116,7 @@ export function DeepTalkPage() {
         <ul className="flex w-max gap-2 sm:w-auto sm:flex-wrap">
           {TOPICS.map((t) => {
             const active = t.id === topicId
+            const locked = !canUse(t.id)
             const done = t.questions.filter((q) => state.data.answers.some((a) => a.user_id === me.userId && a.question_id === q.id)).length
             return (
               <li key={t.id}>
@@ -125,9 +132,13 @@ export function DeepTalkPage() {
                   {active && <m.span layoutId="topic-pill" className="absolute inset-0 rounded-full bg-primary shadow-sm" transition={SPRING} />}
                   {!active && <span className="absolute inset-0 rounded-full border border-border bg-surface" aria-hidden />}
                   <span className="relative">{t.title}</span>
-                  <span className={cn('tabular relative rounded-full px-1.5 text-xs', active ? 'bg-white/20' : 'bg-surface-muted')}>
-                    {done}/{t.questions.length}
-                  </span>
+                  {locked ? (
+                    <Lock className="relative size-3.5" aria-label="Premium" />
+                  ) : (
+                    <span className={cn('tabular relative rounded-full px-1.5 text-xs', active ? 'bg-white/20' : 'bg-surface-muted')}>
+                      {done}/{t.questions.length}
+                    </span>
+                  )}
                 </button>
               </li>
             )
@@ -147,24 +158,43 @@ export function DeepTalkPage() {
             {topic.title}
           </h2>
           <p className="text-ink-muted">{topic.description}</p>
-          <ul className="mt-5 space-y-3">
-            {topic.questions.map((q, i) => (
-              <m.li key={q.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05, duration: 0.4, ease: EASE_OUT }}>
-                <QuestionCard
-                  question={q}
-                  ctx={ctx}
-                  weddingId={wedding.id}
-                  open={openId === q.id}
-                  onToggle={() => setOpenId(openId === q.id ? null : q.id)}
-                  onSaved={reload}
-                />
-              </m.li>
-            ))}
-          </ul>
+          {!canUse(topic.id) ? (
+            <LockedPanel
+              className="mt-5"
+              source="deeptalk"
+              title={`Topik "${topic.title}" ada di Premium`}
+              description={`${topic.questions.length} pertanyaan untuk dijawab berdua, bagian dari ${DEEPTALK_TOTAL_COUNT} pertanyaan lengkap deep talk.`}
+            >
+              <ul className="mt-4 space-y-2" aria-label="Contoh pertanyaan">
+                {topic.questions.slice(0, 2).map((q) => (
+                  <li key={q.id} className="flex gap-2.5 rounded-xl bg-surface/80 px-3.5 py-2.5 text-sm text-ink-muted ring-1 ring-border">
+                    <Lock className="mt-0.5 size-3.5 shrink-0 text-ink-subtle" aria-hidden />
+                    {q.text}
+                  </li>
+                ))}
+              </ul>
+            </LockedPanel>
+          ) : (
+            <ul className="mt-5 space-y-3">
+              {topic.questions.map((q, i) => (
+                <m.li key={q.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05, duration: 0.4, ease: EASE_OUT }}>
+                  <QuestionCard
+                    question={q}
+                    ctx={ctx}
+                    weddingId={wedding.id}
+                    open={openId === q.id}
+                    onToggle={() => setOpenId(openId === q.id ? null : q.id)}
+                    onSaved={reload}
+                  />
+                </m.li>
+              ))}
+            </ul>
+          )}
         </m.section>
       </AnimatePresence>
 
       <CardDeck
+        questions={usable}
         open={deckOpen}
         onClose={() => setDeckOpen(false)}
         onAnswer={(qid) => {
@@ -372,10 +402,10 @@ function QuestionCard({ question, ctx, weddingId, open, onToggle, onSaved }: { q
 }
 
 /** Mode kartu: kartu pertanyaan acak untuk diobrolkan langsung, dengan animasi balik kartu. */
-function CardDeck({ open, onClose, onAnswer }: { open: boolean; onClose: () => void; onAnswer: (qid: string) => void }) {
+function CardDeck({ questions, open, onClose, onAnswer }: { questions: typeof ALL_QUESTIONS; open: boolean; onClose: () => void; onAnswer: (qid: string) => void }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   // Urutan diacak ulang setiap kali mode kartu dibuka
-  const order = useMemo(() => [...ALL_QUESTIONS].sort(() => Math.random() - 0.5), [open])
+  const order = useMemo(() => [...questions].sort(() => Math.random() - 0.5), [open, questions])
   const [i, setI] = useState(0)
   const [flipped, setFlipped] = useState(false)
 

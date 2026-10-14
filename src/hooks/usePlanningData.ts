@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { db } from '@/lib/supabase'
 import { getCurrentDemoAccount } from '@/lib/demoData'
 import { toDateOnly } from '@/lib/format'
+import { FREE_GUEST_LIMIT } from '@/lib/plans'
 import {
   addDemoCategory,
   addDemoExpense,
@@ -33,6 +34,14 @@ import type {
 } from '@/lib/database.types'
 
 type Load<T> = { status: 'loading' } | { status: 'error' } | { status: 'ready'; data: T }
+
+/** Batas undangan paket Gratis tercapai (dijaga trigger database `guests_free_limit`). */
+export class GuestLimitError extends Error {
+  constructor() {
+    super(`Paket Gratis maksimal ${FREE_GUEST_LIMIT} undangan. Upgrade ke Premium untuk menambah tamu tanpa batas.`)
+    this.name = 'GuestLimitError'
+  }
+}
 
 // ---------------------------------------------------------------------------
 // 1. BUDGET HOOK
@@ -698,6 +707,7 @@ export function useGuestsData(weddingId: string) {
     async (input: { name: string; group_name?: string | null; guest_count?: number; notes?: string | null }) => {
       const demo = getCurrentDemoAccount()
       if (demo) {
+        if (!demo.isPremium && getDemoGuests(demo.id).length >= FREE_GUEST_LIMIT) throw new GuestLimitError()
         addDemoGuest(demo.id, {
           wedding_id: weddingId,
           name: input.name,
@@ -719,8 +729,8 @@ export function useGuestsData(weddingId: string) {
         rsvp_status: 'menunggu',
         notes: input.notes ?? null,
       })
-      if (error) void load()
-      else void load()
+      void load()
+      if (error) throw error.hint === 'premium_required' ? new GuestLimitError() : new Error('Gagal menambahkan tamu. Coba lagi.')
     },
     [weddingId, load],
   )

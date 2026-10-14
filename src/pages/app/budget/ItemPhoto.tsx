@@ -1,6 +1,9 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { Link } from 'react-router'
 import { ImagePlus, X } from 'lucide-react'
+import { PremiumBadge, premiumHref } from '@/components/premium/Premium'
+import { usePremium } from '@/hooks/usePremium'
 import { cn } from '@/lib/cn'
 import { itemPhotoUrl, validateItemPhoto } from '@/lib/itemPhoto'
 
@@ -103,6 +106,39 @@ export function PhotoPicker({
 
   const preview = fileUrl ?? savedUrl
   const has = Boolean(file || (current && !removed))
+  const { isPremium } = usePremium()
+
+  // Paket Gratis: unggah foto baru dikunci (dijaga juga oleh kebijakan storage); foto lama tetap tampil & bisa dihapus.
+  if (!isPremium && !file) {
+    return (
+      <div>
+        <span className="text-sm font-semibold text-ink">
+          Foto <span className="text-xs font-normal text-ink-subtle">(opsional)</span>
+        </span>
+        <div className="mt-1.5 flex items-center gap-2">
+          {has && <PhotoImg src={preview} alt="Foto item" className="size-11 shrink-0 rounded-xl" />}
+          <Link
+            to={premiumHref('foto')}
+            className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-xl border border-dashed border-border-strong px-3 text-sm font-semibold text-ink-muted transition-colors hover:bg-gold-soft/40"
+          >
+            <ImagePlus className="size-4 shrink-0" aria-hidden />
+            <span className="truncate">{has ? 'Ganti foto' : 'Tambah foto'}</span>
+            <PremiumBadge className="ml-auto" />
+          </Link>
+          {has && (
+            <button
+              type="button"
+              onClick={onRemove}
+              aria-label="Hapus foto"
+              className="flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-xl text-ink-subtle hover:bg-danger-soft hover:text-danger"
+            >
+              <X className="size-4" aria-hidden />
+            </button>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div>

@@ -56,6 +56,7 @@ const tests = {
   'uji tabungan bersama': readFileSync(join(root, 'supabase', 'tests', 'savings_access.sql'), 'utf8'),
   'uji rincian anggaran': readFileSync(join(root, 'supabase', 'tests', 'budget_items.sql'), 'utf8'),
   'uji peran CPP/CPW & berkas': readFileSync(join(root, 'supabase', 'tests', 'couple_sides.sql'), 'utf8'),
+  'uji Premium & pembayaran': readFileSync(join(root, 'supabase', 'tests', 'premium_access.sql'), 'utf8'),
 }
 let failed = false
 
@@ -76,7 +77,7 @@ async function runAll(db) {
   if (error) {
     failed = true
     console.error('✗ gagal →', error)
-  } else console.log('✓ migration, uji isolasi, akun pasangan, tabungan bersama, rincian anggaran, dan peran CPP/CPW + berkas lulus')
+  } else console.log('✓ migration, uji isolasi, akun pasangan, tabungan bersama, rincian anggaran, peran CPP/CPW + berkas, dan Premium + pembayaran lulus')
 }
 
 // 2. Mutation test: kebocoran yang sengaja dibuat HARUS terdeteksi
@@ -107,6 +108,30 @@ const mutations = {
   'pasangan tidak mendapat peran sisa': `drop trigger wedding_members_default_side on public.wedding_members;`,
   'profil semua user terbuka': `drop policy "Partner profile: select" on public.profiles;
      create policy leak on public.profiles for select to authenticated using (true);`,
+  'Premium bisa ditulis sendiri': `grant insert on public.wedding_entitlements to authenticated;
+     create policy leak on public.wedding_entitlements for insert to authenticated with check (true);`,
+  'status pesanan bisa diubah sendiri': `grant update on public.payment_orders to authenticated;
+     create policy leak on public.payment_orders for update to authenticated using (true) with check (true);`,
+  'pesanan terbaca workspace lain': `drop policy "Orders: members read" on public.payment_orders;
+     create policy leak on public.payment_orders for select to authenticated using (true);`,
+  'cek admin dilewati': `create or replace function public.is_app_admin() returns boolean language sql stable as $$ select true $$;`,
+  'batas tamu Gratis dihapus': `drop trigger guests_free_limit on public.guests;`,
+  'topik deep talk Premium terbuka': `drop policy "Deeptalk: premium topics" on public.deeptalk_answers;`,
+  'foto item tanpa Premium': `drop policy "Item photos need premium" on storage.objects;`,
+  'nominal pesanan tidak unik': `drop index public.payment_orders_open_amount;
+     create or replace function public.create_payment_order(p_wedding_id uuid, p_plan_id text default 'premium')
+     returns public.payment_orders language plpgsql security definer set search_path = '' as $f$
+     declare v public.payment_orders;
+     begin
+       if not public.is_wedding_member(p_wedding_id) then raise exception 'x' using errcode = '42501'; end if;
+       if public.is_wedding_premium(p_wedding_id) then raise exception 'x' using errcode = '23505'; end if;
+       select * into v from public.payment_orders where wedding_id = p_wedding_id and status in ('pending','awaiting_verification');
+       if found then return v; end if;
+       insert into public.payment_orders (code, wedding_id, user_id, plan_id, base_amount, unique_code, amount)
+       values ('SRS-AAAAA' || chr(65 + (select count(*)::int from public.payment_orders)),
+               p_wedding_id, auth.uid(), p_plan_id, 99000, 1, 98999) returning * into v;
+       return v;
+     end $f$;`,
 }
 for (const [name, sql] of Object.entries(mutations)) {
   const db = await freshDb()

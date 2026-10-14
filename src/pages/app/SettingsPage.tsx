@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Camera, Download, Info, Loader2, LogOut, Save, ShieldAlert, Trash2, UserMinus } from 'lucide-react'
+import { Camera, Crown, Download, Info, Loader2, LogOut, Save, ShieldAlert, ShieldCheck, Trash2, UserMinus } from 'lucide-react'
 import { useAuth } from '@/auth/AuthProvider'
 import { firstName, useWedding, useWorkspace } from '@/auth/WorkspaceProvider'
 import { getCurrentDemoAccount } from '@/lib/demoData'
@@ -13,13 +13,15 @@ import { PartnerInvite } from '@/components/couple/PartnerInvite'
 import { SidePicker } from '@/components/couple/SidePicker'
 import { SIDE_LABEL, SIDE_TONE, applySideTheme } from '@/lib/side'
 import { cn } from '@/lib/cn'
-import { Button } from '@/components/ui/Button'
+import { Button, ButtonLink } from '@/components/ui/Button'
+import { PremiumBadge } from '@/components/premium/Premium'
+import { usePremium } from '@/hooks/usePremium'
 import { Card, CardBody, CardHeader } from '@/components/ui/Card'
 import { Alert } from '@/components/ui/Feedback'
 import { TextField } from '@/components/ui/Field'
 import { BudgetFields, EventFields, StyleFields } from '@/components/wedding/WeddingFields'
 import { db } from '@/lib/supabase'
-import { toDateOnly } from '@/lib/format'
+import { formatDate, formatRupiah, toDateOnly } from '@/lib/format'
 import { weddingSchema, type WeddingFormInput, type WeddingFormValues } from '@/lib/wedding'
 
 type Status = { tone: 'success' | 'danger'; text: string } | null
@@ -41,10 +43,45 @@ export function SettingsPage() {
         </div>
       )}
       <CoupleCard />
+      <PlanCard />
       <WeddingProfileCard />
       <AccountCard />
       <DataCard />
     </div>
+  )
+}
+
+/** Paket aktif workspace + jalan pintas admin. */
+function PlanCard() {
+  const { isPremium, price, isAdmin, entitlement, isDemo } = usePremium()
+  return (
+    <Card>
+      <CardHeader title="Paket" description="Satu paket untuk kalian berdua." />
+      <CardBody className="space-y-3">
+        <div className="flex flex-col gap-3 rounded-xl border border-border p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="flex items-center gap-2 font-semibold text-ink">
+              {isPremium ? <PremiumBadge label="Premium" /> : 'Gratis'}
+            </p>
+            <p className="mt-0.5 text-sm text-ink-muted">
+              {isPremium
+                ? isDemo
+                  ? 'Akun demo dengan semua fitur terbuka.'
+                  : `Aktif sejak ${formatDate(entitlement?.activated_at?.slice(0, 10))}, berlaku selamanya.`
+                : `Upgrade ${formatRupiah(price)} sekali bayar: tamu tanpa batas, analisis lengkap, semua deep talk, foto di anggaran.`}
+            </p>
+          </div>
+          <ButtonLink to="/app/premium" variant={isPremium ? 'secondary' : 'primary'} icon={<Crown className="size-4" aria-hidden />}>
+            {isPremium ? 'Lihat paket' : 'Lihat Premium'}
+          </ButtonLink>
+        </div>
+        {isAdmin && (
+          <ButtonLink to="/app/admin/pembayaran" variant="ghost" icon={<ShieldCheck className="size-4" aria-hidden />}>
+            Verifikasi pembayaran (admin)
+          </ButtonLink>
+        )}
+      </CardBody>
+    </Card>
   )
 }
 

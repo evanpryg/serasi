@@ -44,7 +44,8 @@ Tanpa `.env.local`, landing page tetap bisa dibuka; halaman login/aplikasi menam
    - `supabase/migrations/20261013000003_couple_personality_deeptalk.sql` — anggota workspace, undangan pasangan, foto sampul, tes kepribadian, deep talk; semua RLS diubah dari *owner* ke *member*
    - `000004` … `000007` — checklist, tabungan bersama, foto profil, rincian anggaran
    - `supabase/migrations/20261013000008_bride_groom_documents.sql` — peran CPP/CPW (`wedding_members.side`, RPC `set_my_side`) dan tabel `wedding_documents` untuk berkas KUA
-3. **Uji isolasi di proyek sungguhan:** jalankan `supabase/tests/rls_isolation.sql` lalu `supabase/tests/couple_access.sql` di SQL Editor. Hasil yang diharapkan: `SEMUA UJI ISOLASI LULUS` dan `SEMUA UJI AKUN PASANGAN LULUS` (semua data uji di-rollback).
+   - `supabase/migrations/20261014000009_premium_payments.sql` — paket Premium: tabel `plans`, `payment_orders`, `wedding_entitlements`, `app_admins`, RPC pembayaran QRIS, dan batas paket Gratis (lihat **Premium & pembayaran**)
+3. **Uji isolasi di proyek sungguhan:** jalankan `supabase/tests/rls_isolation.sql`, `supabase/tests/couple_access.sql`, dan `supabase/tests/premium_access.sql` di SQL Editor. Hasil yang diharapkan: `SEMUA UJI ISOLASI LULUS` dan `SEMUA UJI AKUN PASANGAN LULUS` (semua data uji di-rollback).
 4. Ambil **Project URL** dan **publishable key** (atau anon key lama) dari *Project Settings → API*, isi ke `.env.local`.
    > ⚠️ Jangan pernah menaruh `service_role` / secret key di variabel `VITE_*`: semua variabel `VITE_*` masuk ke bundle browser.
 5. *Authentication → URL Configuration*:
@@ -93,6 +94,36 @@ Netlify hanya menyajikan file statis.
 | **Foto sampul** | Bawaan: `public/images/default-cover.*`. Pasangan bisa mengunggah foto prewedding: dikompres di browser (maks. 1920 px, WebP, metadata EXIF/GPS terhapus), disimpan privat di `wedding-files/<wedding_id>/`, ditampilkan lewat signed URL. |
 | **Tes kepribadian** | 28 pernyataan (7 per dimensi), skala 1–5, hasil 16 tipe + profil, cara menghadapi pasangan, dan dinamika per dimensi. Hasil pasangan baru terlihat setelah kamu menyelesaikan tes (dijaga RLS). Terinspirasi MBTI®, **bukan instrumen resmi** — disclaimer tampil di aplikasi. |
 | **Deep talk** | 40 pertanyaan dalam 8 topik (visi, iman, keuangan, keluarga besar, anak, peran, konflik, gaya hidup). Jawaban pasangan untuk sebuah pertanyaan terbuka setelah kamu menjawab pertanyaan yang sama (dijaga RLS). Keduanya menilai *sejalan / perlu dibahas / berbeda*; status "sejalan" hanya jika keduanya sepakat. Ada **mode kartu** untuk ngobrol langsung. |
+
+## Premium & pembayaran
+
+**Model:** Gratis selamanya untuk fitur inti; **Premium Rp 99.000 sekali bayar per workspace** (berlaku untuk berdua, tanpa langganan).
+
+| | Gratis | Premium |
+|---|---|---|
+| Budget, tabungan, vendor, checklist, Berkas KUA, rundown, unduh data | ✓ | ✓ |
+| Daftar tamu | 100 undangan | tanpa batas |
+| Foto barang/bukti di anggaran | – | ✓ |
+| Tes kepribadian | tipe & ringkasan | analisis rumah tangga lengkap |
+| Deep talk | 15 pertanyaan (visi, iman, komunikasi) | 40 pertanyaan |
+
+Batas dijaga **database**, bukan hanya UI: trigger `guests_free_limit`, kebijakan RESTRICTIVE di `deeptalk_answers` dan `storage.objects` (`<wedding>/items/…`). Pembagian ditulis di satu tempat untuk UI: `src/lib/plans.ts` (angka harus sama dengan migration 000009). Analisis kepribadian lengkap adalah konten statis di bundle, jadi kuncinya hanya di tampilan.
+
+**Alur bayar (QRIS, verifikasi manual):**
+1. Pengguna menekan *Bayar dengan QRIS* → RPC `create_payment_order` menghitung nominal **= harga − kode unik (1–499)**, unik di antara pesanan terbuka, berlaku 24 jam.
+2. Aplikasi mengubah QRIS statis merchant (`VITE_QRIS_PAYLOAD`, default dari stiker) menjadi **QRIS dinamis** berisi nominal tersebut (`src/lib/qris.ts`, CRC16 dihitung ulang). Tersedia tombol *Simpan gambar QR* untuk bayar dari HP yang sama (Scan → Galeri).
+3. Pengguna menekan *Saya sudah bayar* → status `awaiting_verification`.
+4. Admin membuka **Pengaturan → Verifikasi pembayaran** (`/app/admin/pembayaran`), mencocokkan nominal persis dengan dana masuk di aplikasi merchant, lalu *Tandai lunas* → Premium aktif untuk kedua anggota.
+
+**Menjadikan akun sebagai admin** (sekali, di SQL Editor):
+
+```sql
+insert into public.app_admins (user_id) select id from auth.users where email = 'email-admin@contoh.com';
+```
+
+**Mengubah harga** tanpa deploy: `update public.plans set price = 149000 where id = 'premium';` (pesanan yang sudah dibuat tetap memakai nominal lamanya). Ubah juga `PREMIUM_FALLBACK_PRICE` di `src/lib/plans.ts` agar tampilan awal sama.
+
+Opsional `VITE_PAYMENT_WHATSAPP=628…` menampilkan tombol *Kirim bukti via WhatsApp* saat menunggu verifikasi.
 
 Animasi memakai `motion` (dimuat terpisah agar bundle awal ringan) dan otomatis nonaktif saat sistem meminta *reduce motion*.
 

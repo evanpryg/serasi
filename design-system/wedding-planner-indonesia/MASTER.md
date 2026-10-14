@@ -106,6 +106,16 @@ Komponen di `src/components/ui/PageKit.tsx`. Urutan tetap supaya pengguna tidak 
   bagian "Wajib disiapkan" (centang bulat warna peran) dan "Hanya jika berlaku" (saklar Berlaku, baru bisa dicentang setelah menyala).
   Item "umum" (pas foto, KTP wali/saksi) diberi badge "Biasanya diminta" karena bukan syarat di PMA. Status di tabel `wedding_documents`.
 
+## Premium (2026-10-14)
+- **Satu paket berbayar**, sekali bayar per workspace untuk berdua (bukan langganan). Pembagian di `src/lib/plans.ts`; batas dijaga database.
+- Fitur terkunci memakai `LockedPanel` / `PremiumBadge` (`src/components/premium/Premium.tsx`): selalu jelaskan apa yang terbuka,
+  tampilkan harga, satu CTA ke `/app/premium?dari=<sumber>`. Jangan pernah modal yang "mengaktifkan" Premium di browser.
+- Pilihan yang terkunci tetap terlihat (ikon gembok + label "Premium"), tidak disembunyikan; data lama tetap bisa dilihat/dihapus.
+- Halaman `/app/premium`: kartu harga paling atas di mobile → tabel perbandingan (kolom Premium berlatar `gold-soft`) → FAQ.
+  Checkout: 3 langkah, nominal besar + salin, QR hitam-putih murni (pengecualian token warna demi pemindai), tombol
+  "Simpan gambar QR" untuk bayar dari HP yang sama, nama merchant QRIS ditampilkan agar pembayar tidak ragu.
+- Akun demo tidak pernah menampilkan QR yang bisa dibayar.
+
 ## Format lokal
 - Rupiah: `Rp 12.500.000` (Intl `id-ID`, tanpa desimal). Singkat: `Rp 12,5 jt`.
 - Tanggal: `13 Oktober 2026`; singkat `13 Okt 2026`.

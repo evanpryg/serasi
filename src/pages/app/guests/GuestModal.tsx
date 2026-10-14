@@ -59,8 +59,8 @@ export function GuestModal({ isOpen, onClose, existingGroups, onSubmit }: GuestM
       setCustomGroup('')
       setIsCustomGroup(false)
       setNotes('')
-    } catch {
-      setError('Gagal menambahkan tamu.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gagal menambahkan tamu.')
     } finally {
       setSubmitting(false)
     }
