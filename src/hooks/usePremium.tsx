@@ -1,8 +1,16 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { db, isSupabaseConfigured } from '@/lib/supabase'
+import { useAuth } from '@/auth/AuthProvider'
 import { getCurrentDemoAccount } from '@/lib/demoData'
 import { PREMIUM_FALLBACK_PRICE, PREMIUM_PLAN_ID } from '@/lib/plans'
 import type { PaymentOrder, WeddingEntitlement } from '@/lib/database.types'
+
+export const APP_ADMIN_EMAILS = ['evanpray2242@gmail.com']
+
+export function isAppAdminEmail(email?: string | null): boolean {
+  if (!email) return false
+  return APP_ADMIN_EMAILS.includes(email.trim().toLowerCase())
+}
 
 /**
  * Status Premium workspace. Sumber kebenaran ada di server (tabel wedding_entitlements,
@@ -44,11 +52,14 @@ function friendly(err: { message?: string } | null, fallback: string): Error {
 
 export function PremiumProvider({ weddingId, children }: { weddingId: string; children: ReactNode }) {
   const demo = getCurrentDemoAccount()
+  const { user } = useAuth()
+  const isEmailAdmin = isAppAdminEmail(user?.email)
+
   const [loading, setLoading] = useState(!demo)
   const [entitlement, setEntitlement] = useState<WeddingEntitlement | null>(null)
   const [price, setPrice] = useState(PREMIUM_FALLBACK_PRICE)
   const [order, setOrder] = useState<PaymentOrder | null>(null)
-  const [isAdmin, setIsAdmin] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(isEmailAdmin)
   const [paymentsReady, setPaymentsReady] = useState(true)
 
   const load = useCallback(async () => {
@@ -65,9 +76,9 @@ export function PremiumProvider({ weddingId, children }: { weddingId: string; ch
     setEntitlement(e && (!e.expires_at || new Date(e.expires_at).getTime() > Date.now()) ? e : null)
     if (plan.data) setPrice(plan.data.price)
     setOrder(ord.data ?? null)
-    setIsAdmin(admin.data === true)
+    setIsAdmin(admin.data === true || isEmailAdmin)
     setLoading(false)
-  }, [weddingId])
+  }, [weddingId, isEmailAdmin])
 
   useEffect(() => {
     void load()

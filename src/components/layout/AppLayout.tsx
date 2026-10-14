@@ -14,6 +14,7 @@ import {
   MoreHorizontal,
   PiggyBank,
   Settings,
+  ShieldCheck,
   Store,
   Users,
   Wallet,
@@ -78,7 +79,7 @@ export function AppLayout() {
 function AppShell() {
   const wedding = useWedding()
   const { me, partner, couple } = useWorkspace()
-  const { isPremium } = usePremium()
+  const { isPremium, isAdmin } = usePremium()
   const { signOut, user } = useAuth()
   const location = useLocation()
   const isDemo = Boolean(getCurrentDemoAccount())
@@ -121,6 +122,13 @@ function AppShell() {
           <NavGroup label="Perencanaan" items={PLANNING} />
           <NavGroup label="Kita berdua" items={COUPLE} accent />
           <NavGroup items={[SETTINGS]} />
+          {isAdmin && (
+            <NavGroup
+              label="Admin Serasi"
+              items={[{ to: '/app/admin/pembayaran', label: 'Kelola Akun Premium', icon: ShieldCheck }]}
+              accent
+            />
+          )}
         </nav>
         {!isPremium && <UpgradeCard />}
         <div className="border-t border-border pt-4">
@@ -186,7 +194,7 @@ function AppShell() {
         </main>
       </div>
 
-      <MobileNav onSignOut={() => void signOut()} isDemo={isDemo} />
+      <MobileNav onSignOut={() => void signOut()} isDemo={isDemo} isAdmin={isAdmin} />
       <SideGate />
     </div>
   )
@@ -251,11 +259,11 @@ function SideLink({ item, layoutGroup = 'side' }: { item: NavItem; layoutGroup?:
   )
 }
 
-function MobileNav({ onSignOut, isDemo }: { onSignOut: () => void; isDemo: boolean }) {
+function MobileNav({ onSignOut, isDemo, isAdmin }: { onSignOut: () => void; isDemo: boolean; isAdmin?: boolean }) {
   const [open, setOpen] = useState(false)
   const dialogRef = useRef<HTMLDialogElement>(null)
   const location = useLocation()
-  const moreActive = MOBILE_MORE.some((i) => location.pathname.startsWith(i.to))
+  const moreActive = MOBILE_MORE.some((i) => location.pathname.startsWith(i.to)) || Boolean(isAdmin && location.pathname.startsWith('/app/admin'))
 
   useEffect(() => setOpen(false), [location.pathname])
 
@@ -332,6 +340,14 @@ function MobileNav({ onSignOut, isDemo }: { onSignOut: () => void; isDemo: boole
                 <SideLink item={item} layoutGroup="sheet" />
               </li>
             ))}
+            {isAdmin && (
+              <li>
+                <SideLink
+                  item={{ to: '/app/admin/pembayaran', label: 'Kelola Akun Premium (Admin)', icon: ShieldCheck }}
+                  layoutGroup="sheet"
+                />
+              </li>
+            )}
             <li>
               {isDemo ? (
                 <a

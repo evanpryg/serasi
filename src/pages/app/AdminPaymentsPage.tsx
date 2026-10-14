@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Navigate } from 'react-router'
-import { Check, Inbox, RefreshCw, X } from 'lucide-react'
+import { Check, CreditCard, Crown, Inbox, RefreshCw, Search, ShieldAlert, ShieldCheck, Users, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge, Card } from '@/components/ui/Card'
 import { Alert, EmptyState, ErrorState, Skeleton } from '@/components/ui/Feedback'
 import { ChipGroup } from '@/components/ui/PageKit'
 import { usePremium } from '@/hooks/usePremium'
 import { db } from '@/lib/supabase'
-import { formatRupiah } from '@/lib/format'
-import type { AdminPaymentOrder, PaymentOrderStatus } from '@/lib/database.types'
+import { formatDate, formatRupiah } from '@/lib/format'
+import { cn } from '@/lib/cn'
+import type { AdminPaymentOrder, AdminWorkspaceItem, PaymentOrderStatus } from '@/lib/database.types'
 
 type Filter = 'awaiting_verification' | 'pending' | 'paid' | 'all'
+type MainTab = 'orders' | 'workspaces'
 
 const timeFmt = new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 
@@ -23,9 +25,65 @@ const STATUS: Record<PaymentOrderStatus, { label: string; tone: 'gold' | 'neutra
   cancelled: { label: 'Dibatalkan', tone: 'neutral' },
 }
 
-/** Khusus admin aplikasi: cocokkan nominal unik dengan dana masuk di aplikasi merchant QRIS. */
+/** Khusus admin aplikasi: verifikasi bukti pembayaran QRIS dan kelola hak Premium user. */
 export function AdminPaymentsPage() {
   const { isAdmin, loading } = usePremium()
+  const [tab, setTab] = useState<MainTab>('orders')
+
+  if (loading) return <Skeleton className="h-64 rounded-card" />
+  if (!isAdmin) return <Navigate to="/app/dashboard" replace />
+
+  return (
+    <div className="space-y-6">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary">
+            <ShieldCheck className="size-4" aria-hidden />
+            <span>Panel Admin Serasi</span>
+          </div>
+          <h1 className="mt-1 font-display text-[2.2rem] font-semibold leading-tight sm:text-[2.75rem]">
+            {tab === 'orders' ? 'Verifikasi Pembayaran' : 'Kelola Akun Premium'}
+          </h1>
+          <p className="mt-1 max-w-2xl text-ink-muted">
+            {tab === 'orders'
+              ? 'Cocokkan nominal unik dengan dana masuk di aplikasi merchant QRIS, lalu tandai lunas untuk mengaktifkan Premium.'
+              : 'Daftar semua workspace pernikahan dan hak akses Premium. Anda dapat mengaktifkan atau mencabut Premium secara manual.'}
+          </p>
+        </div>
+      </header>
+
+      {/* Tab navigasi admin */}
+      <div className="flex gap-2 border-b border-border pb-1">
+        <button
+          type="button"
+          onClick={() => setTab('orders')}
+          className={cn(
+            'inline-flex min-h-11 items-center gap-2 border-b-2 px-4 text-sm font-semibold transition-colors -mb-1',
+            tab === 'orders' ? 'border-primary text-primary' : 'border-transparent text-ink-muted hover:text-ink',
+          )}
+        >
+          <CreditCard className="size-4" aria-hidden />
+          Verifikasi Pesanan
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab('workspaces')}
+          className={cn(
+            'inline-flex min-h-11 items-center gap-2 border-b-2 px-4 text-sm font-semibold transition-colors -mb-1',
+            tab === 'workspaces' ? 'border-primary text-primary' : 'border-transparent text-ink-muted hover:text-ink',
+          )}
+        >
+          <Users className="size-4" aria-hidden />
+          Daftar Akun User & Status Premium
+        </button>
+      </div>
+
+      {tab === 'orders' ? <OrdersTab /> : <WorkspacesTab />}
+    </div>
+  )
+}
+
+function OrdersTab() {
   const [filter, setFilter] = useState<Filter>('awaiting_verification')
   const [rows, setRows] = useState<AdminPaymentOrder[] | null>(null)
   const [failed, setFailed] = useState(false)
@@ -38,43 +96,33 @@ export function AdminPaymentsPage() {
   }, [filter])
 
   useEffect(() => {
-    if (isAdmin) void load()
-  }, [isAdmin, load])
-
-  if (loading) return <Skeleton className="h-64 rounded-card" />
-  if (!isAdmin) return <Navigate to="/app/dashboard" replace />
+    void load()
+  }, [load])
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="font-display text-[2.2rem] font-semibold leading-tight sm:text-[2.75rem]">Verifikasi pembayaran</h1>
-          <p className="mt-1 max-w-2xl text-ink-muted">
-            Cocokkan <strong className="text-ink">nominal persis</strong> dengan dana masuk di aplikasi merchant QRIS, lalu tandai lunas. Premium aktif seketika untuk pasangan tersebut.
-          </p>
-        </div>
-        <Button variant="secondary" onClick={() => void load()} icon={<RefreshCw className="size-4" aria-hidden />}>
+    <div className="space-y-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <ChipGroup<Filter>
+          label="Saring status pembayaran"
+          value={filter}
+          onChange={(v) => {
+            setRows(null)
+            setFilter(v)
+          }}
+          options={[
+            { value: 'awaiting_verification', label: 'Perlu dicek' },
+            { value: 'pending', label: 'Belum bayar' },
+            { value: 'paid', label: 'Lunas' },
+            { value: 'all', label: 'Semua' },
+          ]}
+        />
+        <Button variant="secondary" size="sm" onClick={() => void load()} icon={<RefreshCw className="size-3.5" aria-hidden />}>
           Muat ulang
         </Button>
-      </header>
-
-      <ChipGroup<Filter>
-        label="Saring status pembayaran"
-        value={filter}
-        onChange={(v) => {
-          setRows(null)
-          setFilter(v)
-        }}
-        options={[
-          { value: 'awaiting_verification', label: 'Perlu dicek' },
-          { value: 'pending', label: 'Belum bayar' },
-          { value: 'paid', label: 'Lunas' },
-          { value: 'all', label: 'Semua' },
-        ]}
-      />
+      </div>
 
       {failed ? (
-        <ErrorState message="Daftar pembayaran gagal dimuat." onRetry={() => void load()} />
+        <ErrorState message="Daftar pembayaran gagal dimuat. Pastikan migration pembayaran sudah dijalankan di Supabase." onRetry={() => void load()} />
       ) : rows == null ? (
         <Skeleton className="h-48 rounded-card" />
       ) : rows.length === 0 ? (
@@ -83,6 +131,139 @@ export function AdminPaymentsPage() {
         <Card className="divide-y divide-border overflow-hidden">
           {rows.map((r) => (
             <OrderRow key={r.id} row={r} onDone={load} />
+          ))}
+        </Card>
+      )}
+    </div>
+  )
+}
+
+function WorkspacesTab() {
+  const [search, setSearch] = useState('')
+  const [query, setQuery] = useState('')
+  const [items, setItems] = useState<AdminWorkspaceItem[] | null>(null)
+  const [failed, setFailed] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    setFailed(false)
+    setActionError(null)
+    const { data, error } = await db().rpc('admin_list_workspaces', { p_search: query.trim() || null })
+    if (error) return setFailed(true)
+    setItems(data ?? [])
+  }, [query])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const handleToggle = async (weddingId: string, currentPremium: boolean, title: string) => {
+    setActionError(null)
+    setActionSuccess(null)
+    const nextState = !currentPremium
+    const confirmed = window.confirm(
+      nextState
+        ? `Aktifkan paket Premium untuk workspace "${title}"?`
+        : `Cabut status Premium dari workspace "${title}"?`,
+    )
+    if (!confirmed) return
+
+    const { error } = await db().rpc('admin_set_wedding_premium', {
+      p_wedding_id: weddingId,
+      p_is_premium: nextState,
+    })
+
+    if (error) {
+      setActionError(`Gagal memperbarui status: ${error.message}`)
+      return
+    }
+
+    setActionSuccess(`Status Premium untuk "${title}" berhasil ${nextState ? 'diaktifkan' : 'dinonaktifkan'}.`)
+    void load()
+  }
+
+  return (
+    <div className="space-y-5">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          setQuery(search)
+        }}
+        className="flex gap-2"
+      >
+        <div className="relative flex-1">
+          <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-ink-subtle" aria-hidden />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Cari berdasarkan nama pernikahan atau email pengguna…"
+            className="h-11 w-full rounded-xl border border-border bg-surface pl-10 pr-4 text-sm text-ink placeholder:text-ink-subtle focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
+          />
+        </div>
+        <Button type="submit" variant="secondary">
+          Cari
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => {
+            setSearch('')
+            setQuery('')
+          }}
+        >
+          Reset
+        </Button>
+      </form>
+
+      {actionError && <Alert tone="danger">{actionError}</Alert>}
+      {actionSuccess && <Alert tone="success">{actionSuccess}</Alert>}
+
+      {failed ? (
+        <ErrorState message="Gagal memuat daftar workspace. Pastikan migration 20261014000010_admin_evanpray.sql sudah dijalankan di Supabase." onRetry={() => void load()} />
+      ) : items == null ? (
+        <Skeleton className="h-48 rounded-card" />
+      ) : items.length === 0 ? (
+        <EmptyState icon={<Users className="size-7" aria-hidden />} title="Tidak ada workspace" description="Tidak ditemukan workspace pernikahan sesuai kriteria pencarian." />
+      ) : (
+        <Card className="divide-y divide-border overflow-hidden">
+          {items.map((w) => (
+            <article key={w.wedding_id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+              <div className="min-w-0 space-y-1">
+                <div className="flex items-center gap-2">
+                  <h3 className="truncate font-semibold text-ink text-base">{w.title}</h3>
+                  <Badge tone={w.is_premium ? 'success' : 'neutral'}>
+                    {w.is_premium ? 'Premium' : 'Gratis'}
+                  </Badge>
+                </div>
+                <div className="text-xs text-ink-muted space-y-0.5">
+                  <p>
+                    <strong className="text-ink">Owner:</strong> {w.owner_name ?? '—'} ({w.owner_email ?? '—'})
+                  </p>
+                  {w.partner_email && (
+                    <p>
+                      <strong className="text-ink">Pasangan:</strong> {w.partner_name ?? '—'} ({w.partner_email})
+                    </p>
+                  )}
+                  <p className="text-ink-subtle">
+                    Dibuat: {formatDate(w.created_at.slice(0, 10))}
+                    {w.is_premium && w.activated_at && ` · Premium aktif sejak: ${formatDate(w.activated_at.slice(0, 10))}`}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex shrink-0 items-center gap-2">
+                <Button
+                  size="sm"
+                  variant={w.is_premium ? 'danger' : 'primary'}
+                  icon={w.is_premium ? <ShieldAlert className="size-4" aria-hidden /> : <Crown className="size-4" aria-hidden />}
+                  onClick={() => void handleToggle(w.wedding_id, w.is_premium, w.title)}
+                >
+                  {w.is_premium ? 'Cabut Premium' : 'Aktifkan Premium'}
+                </Button>
+              </div>
+            </article>
           ))}
         </Card>
       )}

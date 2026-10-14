@@ -253,6 +253,19 @@ export type AdminPaymentOrder = Pick<
   'id' | 'code' | 'wedding_id' | 'amount' | 'unique_code' | 'status' | 'payer_name' | 'claimed_at' | 'reviewed_at' | 'admin_note' | 'expires_at' | 'created_at'
 > & { wedding_title: string; user_email: string | null; user_name: string | null }
 
+export type AdminWorkspaceItem = {
+  wedding_id: string
+  title: string
+  owner_name: string | null
+  owner_email: string | null
+  partner_name: string | null
+  partner_email: string | null
+  is_premium: boolean
+  plan_id: string | null
+  activated_at: string | null
+  created_at: string
+}
+
 type Table<Row, Required extends keyof Row> = {
   Row: Row
   Insert: Partial<Row> & Pick<Row, Required>
@@ -318,6 +331,8 @@ export type Database = {
       cancel_payment_order: { Args: { p_order_id: string }; Returns: undefined }
       admin_payment_orders: { Args: { p_status?: PaymentOrderStatus | null }; Returns: AdminPaymentOrder[] }
       admin_review_payment: { Args: { p_order_id: string; p_approve: boolean; p_note?: string | null }; Returns: PaymentOrder }
+      admin_list_workspaces: { Args: { p_search?: string | null }; Returns: AdminWorkspaceItem[] }
+      admin_set_wedding_premium: { Args: { p_wedding_id: string; p_is_premium: boolean; p_note?: string | null }; Returns: boolean }
     }
     Enums: { [_ in never]: never }
     CompositeTypes: { [_ in never]: never }
