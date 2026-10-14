@@ -34,7 +34,6 @@ const VendorsPage = named(() => import('@/pages/app/VendorsPage'), 'VendorsPage'
 const ChecklistPage = named(() => import('@/pages/app/ChecklistPage'), 'ChecklistPage')
 const GuestsPage = named(() => import('@/pages/app/GuestsPage'), 'GuestsPage')
 const RundownPage = named(() => import('@/pages/app/RundownPage'), 'RundownPage')
-const BerkasPage = named(() => import('@/pages/app/BerkasPage'), 'BerkasPage')
 
 function Root() {
   return (
@@ -100,7 +99,7 @@ export const router = createBrowserRouter([
                   { path: 'checklist', element: <ChecklistPage /> },
                   { path: 'guests', element: <GuestsPage /> },
                   { path: 'rundown', element: <RundownPage /> },
-                  { path: 'berkas', element: <BerkasPage /> },
+                  { path: 'berkas', element: <Navigate to="/app/checklist?tab=legalitas" replace /> },
                   { path: 'kita', element: <KitaPage /> },
                   { path: 'kita/kepribadian', element: <PersonalityPage /> },
                   { path: 'kita/deeptalk', element: <DeepTalkPage /> },

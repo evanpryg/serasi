@@ -1,8 +1,11 @@
-import { useRef, useState } from 'react'
-import { AlertTriangle, Check, ChevronRight, FileCheck2, ListChecks, Plus, RotateCcw, StickyNote } from 'lucide-react'
-import { Link } from 'react-router'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { AlertTriangle, Check, ChevronRight, ListChecks, Plus, RotateCcw, StickyNote } from 'lucide-react'
+import { useSearchParams } from 'react-router'
 import { useWedding } from '@/auth/WorkspaceProvider'
 import { useChecklistData } from '@/hooks/usePlanningData'
+import { useDocuments } from '@/hooks/useDocuments'
+import { docProgress, toStatusMap } from '@/lib/kuaDocuments'
+import { BerkasPage } from './BerkasPage'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { EmptyState, ErrorState, Skeleton } from '@/components/ui/Feedback'
@@ -45,7 +48,32 @@ export function ChecklistPage() {
   const wedding = useWedding()
   const { state, reload, toggleTask, createTask, updateTask, deleteTask, resetToTemplates } = useChecklistData(wedding.id, wedding.wedding_date)
 
-  const [eventTab, setEventTab] = useState<ChecklistEventKey>('pernikahan')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tabParam = searchParams.get('tab') as ChecklistEventKey | null
+
+  const [eventTab, setEventTab] = useState<ChecklistEventKey>(() => {
+    if (tabParam && EVENT_KEYS.includes(tabParam)) return tabParam
+    return 'pernikahan'
+  })
+
+  useEffect(() => {
+    if (tabParam && EVENT_KEYS.includes(tabParam) && tabParam !== eventTab) {
+      setEventTab(tabParam)
+    }
+  }, [tabParam, eventTab])
+
+  const { state: docsState } = useDocuments(wedding.id)
+  const docStats = useMemo(() => {
+    if (docsState.status !== 'ready') return null
+    const map = toStatusMap(docsState.data)
+    const columns: ('cpp' | 'cpw' | 'joint')[] = ['cpp', 'cpw', 'joint']
+    const progress = columns.map((c) => docProgress(c, map))
+    return {
+      done: progress.reduce((acc, p) => acc + p.done, 0),
+      total: progress.reduce((acc, p) => acc + p.total, 0),
+    }
+  }, [docsState])
+
   const [showDone, setShowDone] = useState(false)
   const [lateOnly, setLateOnly] = useState(false)
   const [newTitle, setNewTitle] = useState('')
@@ -141,121 +169,124 @@ export function ChecklistPage() {
       </Card>
 
       {!lateOnly && (
-        <>
-          {/* Pilih bagian: geser ke samping di layar kecil */}
-          <div role="group" aria-label="Pilih bagian checklist" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
-            {EVENT_KEYS.map((key) => {
-              const sum = perEvent[key]
-              const active = eventTab === key
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() => setEventTab(key)}
-                  className={cn(
-                    'inline-flex min-h-10 shrink-0 cursor-pointer items-center gap-2 rounded-full border px-3.5 text-sm font-semibold transition-colors',
-                    active ? 'border-primary bg-primary text-on-primary' : 'border-border bg-surface text-ink-muted hover:border-border-strong hover:text-ink',
-                  )}
-                >
-                  {CHECKLIST_EVENTS[key].shortTitle}
-                  <span className={cn('rounded-full px-1.5 text-xs font-medium tabular', active ? 'bg-white/20' : 'bg-surface-muted')}>
-                    {sum.doneCount}/{sum.totalCount}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
+        <div role="group" aria-label="Pilih bagian checklist" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
+          {EVENT_KEYS.map((key) => {
+            const sum = perEvent[key]
+            const active = eventTab === key
+            const isLegalitas = key === 'legalitas'
+            const doneCount = isLegalitas && docStats ? docStats.done : sum.doneCount
+            const totalCount = isLegalitas && docStats ? docStats.total : sum.totalCount
 
-          {eventTab === 'legalitas' && (
-            <Link
-              to="/app/berkas"
-              className="flex items-center gap-3 rounded-card border border-primary/20 bg-primary-soft/60 p-3.5 text-sm transition-colors hover:bg-primary-soft"
-            >
-              <FileCheck2 className="size-5 shrink-0 text-primary" aria-hidden />
-              <span className="min-w-0 flex-1 text-ink-muted">
-                <strong className="text-ink">Daftar resmi berkas KUA</strong> (PMA 30/2024), dipisah untuk CPP & CPW, ada di halaman Berkas.
-              </span>
-              <ChevronRight className="size-4 shrink-0 text-primary" aria-hidden />
-            </Link>
-          )}
-
-          {/* Tambah cepat: ketik lalu Enter */}
-          <form onSubmit={quickAdd} className="flex gap-2">
-            <label htmlFor="quick-task" className="sr-only">
-              Tambah tugas di {CHECKLIST_EVENTS[eventTab].shortTitle}
-            </label>
-            <input
-              id="quick-task"
-              ref={addRef}
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              placeholder={`Tambah tugas di ${CHECKLIST_EVENTS[eventTab].shortTitle}…`}
-              maxLength={160}
-              className="h-11 min-w-0 flex-1 rounded-xl border border-border bg-surface px-3.5 text-[0.95rem] text-ink placeholder:text-ink-subtle focus:border-primary focus:outline-none focus:ring-3 focus:ring-primary/15"
-            />
-            <Button type="submit" loading={adding} aria-label="Tambah tugas" className="w-11 px-0!">
-              {!adding && <Plus className="size-5" aria-hidden />}
-            </Button>
-          </form>
-          {addError && (
-            <p role="alert" className="-mt-3 text-sm text-danger">
-              {addError}
-            </p>
-          )}
-        </>
-      )}
-
-      {groups.length === 0 ? (
-        <EmptyState
-          icon={<ListChecks className="size-7" aria-hidden />}
-          title={scope.length > 0 ? 'Semua sudah beres' : 'Belum ada tugas di sini'}
-          description={scope.length > 0 ? 'Mantap! Bagian ini sudah selesai semua.' : 'Ketik tugas di kolom atas lalu tekan Enter.'}
-        />
-      ) : (
-        <div className="space-y-4">
-          {groups.map(([name, items]) => {
-            const doneInGroup = scope.filter((t) => (t.category || 'Lainnya') === name && t.status === 'done').length
-            const totalInGroup = scope.filter((t) => (t.category || 'Lainnya') === name).length
             return (
-              <section key={name} aria-label={name}>
-                <h2 className="mb-1.5 flex items-baseline justify-between gap-3 px-1 text-xs font-semibold uppercase tracking-wider text-ink-subtle">
-                  <span className="truncate">{name}</span>
-                  {!lateOnly && (
-                    <span className="shrink-0 font-medium normal-case tracking-normal tabular">
-                      {doneInGroup}/{totalInGroup}
-                    </span>
-                  )}
-                </h2>
-                <Card className="overflow-hidden">
-                  <ul className="divide-y divide-border">
-                    {items.map((item) => (
-                      <TaskRow key={item.id} item={item} showEvent={lateOnly} onToggle={() => void toggleTask(item.id)} onOpen={() => setEditing(item)} />
-                    ))}
-                  </ul>
-                </Card>
-              </section>
+              <button
+                key={key}
+                type="button"
+                aria-pressed={active}
+                onClick={() => {
+                  setEventTab(key)
+                  setSearchParams(key === 'pernikahan' ? {} : { tab: key }, { replace: true })
+                }}
+                className={cn(
+                  'inline-flex min-h-10 shrink-0 cursor-pointer items-center gap-2 rounded-full border px-3.5 text-sm font-semibold transition-colors',
+                  active ? 'border-primary bg-primary text-on-primary' : 'border-border bg-surface text-ink-muted hover:border-border-strong hover:text-ink',
+                )}
+              >
+                {CHECKLIST_EVENTS[key].shortTitle}
+                <span className={cn('rounded-full px-1.5 text-xs font-medium tabular', active ? 'bg-white/20' : 'bg-surface-muted')}>
+                  {doneCount}/{totalCount}
+                </span>
+              </button>
             )
           })}
         </div>
       )}
 
-      {(doneHidden > 0 || (showDone && !lateOnly)) && (
-        <button
-          type="button"
-          onClick={() => setShowDone((v) => !v)}
-          className="flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl text-sm font-semibold text-primary hover:bg-primary-soft/50"
-        >
-          <Check className="size-4" aria-hidden />
-          {showDone ? 'Sembunyikan yang sudah beres' : `Tampilkan ${doneHidden} tugas yang sudah beres`}
-        </button>
-      )}
+      {!lateOnly && eventTab === 'legalitas' ? (
+        <div className="pt-1">
+          <BerkasPage showHeader={false} />
+        </div>
+      ) : (
+        <>
+          {!lateOnly && (
+            <>
+              {/* Tambah cepat: ketik lalu Enter */}
+              <form onSubmit={quickAdd} className="flex gap-2">
+                <label htmlFor="quick-task" className="sr-only">
+                  Tambah tugas di {CHECKLIST_EVENTS[eventTab].shortTitle}
+                </label>
+                <input
+                  id="quick-task"
+                  ref={addRef}
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  placeholder={`Tambah tugas di ${CHECKLIST_EVENTS[eventTab].shortTitle}…`}
+                  maxLength={160}
+                  className="h-11 min-w-0 flex-1 rounded-xl border border-border bg-surface px-3.5 text-[0.95rem] text-ink placeholder:text-ink-subtle focus:border-primary focus:outline-none focus:ring-3 focus:ring-primary/15"
+                />
+                <Button type="submit" loading={adding} aria-label="Tambah tugas" className="w-11 px-0!">
+                  {!adding && <Plus className="size-5" aria-hidden />}
+                </Button>
+              </form>
+              {addError && (
+                <p role="alert" className="-mt-3 text-sm text-danger">
+                  {addError}
+                </p>
+              )}
+            </>
+          )}
 
-      <div className="border-t border-border pt-4">
-        <Button variant="ghost" size="sm" onClick={() => setConfirmReset(true)} icon={<RotateCcw className="size-4" aria-hidden />}>
-          Mulai ulang dari daftar awal
-        </Button>
-      </div>
+          {groups.length === 0 ? (
+            <EmptyState
+              icon={<ListChecks className="size-7" aria-hidden />}
+              title={scope.length > 0 ? 'Semua sudah beres' : 'Belum ada tugas di sini'}
+              description={scope.length > 0 ? 'Mantap! Bagian ini sudah selesai semua.' : 'Ketik tugas di kolom atas lalu tekan Enter.'}
+            />
+          ) : (
+            <div className="space-y-4">
+              {groups.map(([name, items]) => {
+                const doneInGroup = scope.filter((t) => (t.category || 'Lainnya') === name && t.status === 'done').length
+                const totalInGroup = scope.filter((t) => (t.category || 'Lainnya') === name).length
+                return (
+                  <section key={name} aria-label={name}>
+                    <h2 className="mb-1.5 flex items-baseline justify-between gap-3 px-1 text-xs font-semibold uppercase tracking-wider text-ink-subtle">
+                      <span className="truncate">{name}</span>
+                      {!lateOnly && (
+                        <span className="shrink-0 font-medium normal-case tracking-normal tabular">
+                          {doneInGroup}/{totalInGroup}
+                        </span>
+                      )}
+                    </h2>
+                    <Card className="overflow-hidden">
+                      <ul className="divide-y divide-border">
+                        {items.map((item) => (
+                          <TaskRow key={item.id} item={item} showEvent={lateOnly} onToggle={() => void toggleTask(item.id)} onOpen={() => setEditing(item)} />
+                        ))}
+                      </ul>
+                    </Card>
+                  </section>
+                )
+              })}
+            </div>
+          )}
+
+          {(doneHidden > 0 || (showDone && !lateOnly)) && (
+            <button
+              type="button"
+              onClick={() => setShowDone((v) => !v)}
+              className="flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl text-sm font-semibold text-primary hover:bg-primary-soft/50"
+            >
+              <Check className="size-4" aria-hidden />
+              {showDone ? 'Sembunyikan yang sudah beres' : `Tampilkan ${doneHidden} tugas yang sudah beres`}
+            </button>
+          )}
+
+          <div className="border-t border-border pt-4">
+            <Button variant="ghost" size="sm" onClick={() => setConfirmReset(true)} icon={<RotateCcw className="size-4" aria-hidden />}>
+              Mulai ulang dari daftar awal
+            </Button>
+          </div>
+        </>
+      )}
 
       {editing && (
         <TaskSheet

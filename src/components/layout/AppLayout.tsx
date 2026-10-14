@@ -3,7 +3,6 @@ import { NavLink, Outlet, useLocation } from 'react-router'
 import {
   Brain,
   CalendarClock,
-  FileCheck2,
   FlaskConical,
   Heart,
   LayoutDashboard,
@@ -37,7 +36,6 @@ const PLANNING: NavItem[] = [
   { to: '/app/tabungan', label: 'Tabungan bersama', icon: PiggyBank },
   { to: '/app/vendors', label: 'Vendor', icon: Store },
   { to: '/app/checklist', label: 'Checklist', icon: ListChecks },
-  { to: '/app/berkas', label: 'Berkas KUA', icon: FileCheck2 },
   { to: '/app/guests', label: 'Tamu', icon: Users },
   { to: '/app/rundown', label: 'Rundown', icon: CalendarClock },
 ]
@@ -57,7 +55,6 @@ const MOBILE_PRIMARY: NavItem[] = [
 ]
 const MOBILE_MORE: NavItem[] = [
   { to: '/app/tabungan', label: 'Tabungan bersama', icon: PiggyBank },
-  { to: '/app/berkas', label: 'Berkas KUA', icon: FileCheck2 },
   { to: '/app/vendors', label: 'Vendor', icon: Store },
   { to: '/app/guests', label: 'Tamu', icon: Users },
   { to: '/app/rundown', label: 'Rundown', icon: CalendarClock },

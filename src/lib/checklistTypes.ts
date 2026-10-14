@@ -41,7 +41,7 @@ export const CHECKLIST_EVENTS: Record<ChecklistEventKey, ChecklistEventConfig> =
   legalitas: {
     key: 'legalitas',
     title: 'Berkas, Dokumen KUA & Legalitas',
-    shortTitle: 'Berkas & KUA',
+    shortTitle: 'Berkas KUA',
     description: 'Persyaratan KUA/SIMKAH, Elsimil, dokumen kondisional, dan kontrak kerja vendor.',
     badgeTone: 'success',
     icon: 'FileCheck',

@@ -32,7 +32,7 @@ const COLUMN_TONE: Record<DocumentSide, { fill: string; text: string; soft: stri
 
 const TAB_HASH = /^#(cpp|cpw|joint)$/
 
-export function BerkasPage() {
+export function BerkasPage({ showHeader = true }: { showHeader?: boolean } = {}) {
   const wedding = useWedding()
   const { me, couple } = useWorkspace()
   const { state, reload, setStatus } = useDocuments(wedding.id)
@@ -56,14 +56,16 @@ export function BerkasPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Berkas nikah"
-        description={
-          <>
-            Syarat resmi daftar nikah di KUA menurut {KUA_SOURCE.title}. Centang yang sudah siap — pasanganmu melihat progres yang sama.
-          </>
-        }
-      />
+      {showHeader && (
+        <PageHeader
+          title="Berkas nikah"
+          description={
+            <>
+              Syarat resmi daftar nikah di KUA menurut {KUA_SOURCE.title}. Centang yang sudah siap — pasanganmu melihat progres yang sama.
+            </>
+          }
+        />
+      )}
 
       <HowTo
         id="berkas"
