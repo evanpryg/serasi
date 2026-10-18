@@ -182,6 +182,9 @@ export type Guest = Timestamps & {
   id: string
   wedding_id: string
   name: string
+  /** Pihak yang mengundang: cpp = pria, cpw = wanita. */
+  side: MemberSide
+  /** Kategori: Saudara, Teman/Sahabat, Rekan kerja, ... (lib/guests) */
   group_name: string | null
   guest_count: number
   invitation_status: 'belum' | 'terkirim'

@@ -15,6 +15,36 @@ import type {
 } from './database.types'
 import { buildInitialTasks } from './checklistTemplates'
 
+/**
+ * Daftar tamu demo berukuran nyata (ratusan undangan) agar tampilan daftar panjang bisa dicoba.
+ * Deterministik: hasil sama setiap kali dimuat.
+ */
+function buildDemoGuestCrowd(weddingId: string, count: number): Guest[] {
+  const first = ['Budi', 'Siti', 'Agus', 'Dewi', 'Rizky', 'Nur', 'Eko', 'Fitri', 'Hendra', 'Ayu', 'Joko', 'Lestari', 'Wahyu', 'Indah', 'Arif', 'Rina', 'Fajar', 'Maya', 'Dimas', 'Putri']
+  const last = ['Santoso', 'Rahmawati', 'Wibowo', 'Kusuma', 'Pratama', 'Hidayat', 'Saputra', 'Lestari', 'Nugroho', 'Permata']
+  const plan: [string, number][] = [['Saudara', 4], ['Teman/Sahabat', 4], ['Rekan kerja', 3], ['Tetangga', 2], ['Kenalan orang tua', 2], ['Tokoh/VIP', 1]]
+  const pool = plan.flatMap(([c, w]) => Array<string>(w).fill(c))
+  const prefix: Record<string, string> = { Saudara: 'Om', Tetangga: 'Bpk.', 'Kenalan orang tua': 'Ibu', 'Tokoh/VIP': 'H.' }
+  const rsvp: Guest['rsvp_status'][] = ['hadir', 'hadir', 'menunggu', 'hadir', 'menunggu', 'tidak_hadir']
+  return Array.from({ length: count }, (_, i) => {
+    const category = pool[(i * 7) % pool.length] ?? 'Saudara'
+    const base = `${first[i % first.length]} ${last[(i * 3 + Math.floor(i / first.length)) % last.length]}`
+    return {
+      id: `${weddingId}-crowd-${i}`,
+      wedding_id: weddingId,
+      name: prefix[category] ? `${prefix[category]} ${base}` : base,
+      side: i % 2 === 0 ? 'cpp' : 'cpw',
+      group_name: category,
+      guest_count: 1 + ((i * 5) % 4),
+      invitation_status: i % 3 === 0 ? 'belum' : 'terkirim',
+      rsvp_status: rsvp[i % rsvp.length] ?? 'menunggu',
+      notes: null,
+      created_at: '2026-10-13T00:00:00Z',
+      updated_at: '2026-10-13T00:00:00Z',
+    }
+  })
+}
+
 export type DemoAccountId = 'demo-gratis' | 'demo-premium'
 
 export type DemoAccount = {
@@ -210,16 +240,16 @@ export const DEMO_ACCOUNTS: Record<DemoAccountId, DemoAccount> = {
     ],
     tasks: buildInitialTasks('demo-wedding-gratis', '2026-11-28'),
     guests: [
-      { id: 'g1', wedding_id: 'demo-wedding-gratis', name: 'Keluarga Besar Abah Sukarna', group_name: 'Keluarga Pria', guest_count: 5, invitation_status: 'terkirim', rsvp_status: 'hadir', notes: 'Menginap di hotel dekat venue', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
-      { id: 'g2', wedding_id: 'demo-wedding-gratis', name: 'Om Dedi & Tante Rita', group_name: 'Keluarga Wanita', guest_count: 2, invitation_status: 'terkirim', rsvp_status: 'hadir', notes: 'Saksi akad dari pihak wanita', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
-      { id: 'g3', wedding_id: 'demo-wedding-gratis', name: 'Dr. Hendra Gunawan, Sp.A & Istri', group_name: 'VIP', guest_count: 2, invitation_status: 'terkirim', rsvp_status: 'hadir', notes: 'Tempat duduk VIP baris depan', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
-      { id: 'g4', wedding_id: 'demo-wedding-gratis', name: 'Rekan Divisi Jaringan Telkom Bandung', group_name: 'Rekan Kerja', guest_count: 8, invitation_status: 'terkirim', rsvp_status: 'hadir', notes: 'Rombongan kantor Bayu', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
-      { id: 'g5', wedding_id: 'demo-wedding-gratis', name: 'Alumni SMAN 3 Bandung (Citra)', group_name: 'Sahabat', guest_count: 6, invitation_status: 'terkirim', rsvp_status: 'hadir', notes: 'Foto bersama di sesi resepsi 12.00', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
-      { id: 'g6', wedding_id: 'demo-wedding-gratis', name: 'Kang Asep Kusnadi & Keluarga', group_name: 'Keluarga Pria', guest_count: 3, invitation_status: 'terkirim', rsvp_status: 'menunggu', notes: 'Belum konfirmasi tiket kereta dari Tasik', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
-      { id: 'g7', wedding_id: 'demo-wedding-gratis', name: 'Tim Marketing Ruang Guru Citra', group_name: 'Rekan Kerja', guest_count: 5, invitation_status: 'terkirim', rsvp_status: 'menunggu', notes: 'Konfirmasi via WhatsApp grup', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
-      { id: 'g8', wedding_id: 'demo-wedding-gratis', name: 'Ibu Ratna Dewi, M.Pd (Kepala Sekolah)', group_name: 'VIP', guest_count: 2, invitation_status: 'terkirim', rsvp_status: 'hadir', notes: 'Diberikan souvenir VIP khusus', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
-      { id: 'g9', wedding_id: 'demo-wedding-gratis', name: 'Rina Anggraeni & Suami', group_name: 'Sahabat', guest_count: 2, invitation_status: 'terkirim', rsvp_status: 'tidak_hadir', notes: 'Titip kado, berhalangan karena melahirkan', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
-      { id: 'g10', wedding_id: 'demo-wedding-gratis', name: 'Bpk. Ketua RT 04 & Pengurus RW Sukajadi', group_name: 'VIP', guest_count: 3, invitation_status: 'belum', rsvp_status: 'menunggu', notes: 'Undangan fisik akan diantar langsung oleh Bayu', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
+      { id: 'g1', wedding_id: 'demo-wedding-gratis', name: 'Keluarga Besar Abah Sukarna', side: 'cpp', group_name: 'Saudara', guest_count: 5, invitation_status: 'terkirim', rsvp_status: 'hadir', notes: 'Menginap di hotel dekat venue', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
+      { id: 'g2', wedding_id: 'demo-wedding-gratis', name: 'Om Dedi & Tante Rita', side: 'cpw', group_name: 'Saudara', guest_count: 2, invitation_status: 'terkirim', rsvp_status: 'hadir', notes: 'Saksi akad dari pihak wanita', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
+      { id: 'g3', wedding_id: 'demo-wedding-gratis', name: 'Dr. Hendra Gunawan, Sp.A & Istri', side: 'cpp', group_name: 'Tokoh/VIP', guest_count: 2, invitation_status: 'terkirim', rsvp_status: 'hadir', notes: 'Tempat duduk VIP baris depan', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
+      { id: 'g4', wedding_id: 'demo-wedding-gratis', name: 'Rekan Divisi Jaringan Telkom Bandung', side: 'cpp', group_name: 'Rekan kerja', guest_count: 8, invitation_status: 'terkirim', rsvp_status: 'hadir', notes: 'Rombongan kantor Bayu', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
+      { id: 'g5', wedding_id: 'demo-wedding-gratis', name: 'Alumni SMAN 3 Bandung (Citra)', side: 'cpw', group_name: 'Teman/Sahabat', guest_count: 6, invitation_status: 'terkirim', rsvp_status: 'hadir', notes: 'Foto bersama di sesi resepsi 12.00', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
+      { id: 'g6', wedding_id: 'demo-wedding-gratis', name: 'Kang Asep Kusnadi & Keluarga', side: 'cpp', group_name: 'Saudara', guest_count: 3, invitation_status: 'terkirim', rsvp_status: 'menunggu', notes: 'Belum konfirmasi tiket kereta dari Tasik', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
+      { id: 'g7', wedding_id: 'demo-wedding-gratis', name: 'Tim Marketing Ruang Guru Citra', side: 'cpw', group_name: 'Rekan kerja', guest_count: 5, invitation_status: 'terkirim', rsvp_status: 'menunggu', notes: 'Konfirmasi via WhatsApp grup', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
+      { id: 'g8', wedding_id: 'demo-wedding-gratis', name: 'Ibu Ratna Dewi, M.Pd (Kepala Sekolah)', side: 'cpp', group_name: 'Tokoh/VIP', guest_count: 2, invitation_status: 'terkirim', rsvp_status: 'hadir', notes: 'Diberikan souvenir VIP khusus', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
+      { id: 'g9', wedding_id: 'demo-wedding-gratis', name: 'Rina Anggraeni & Suami', side: 'cpw', group_name: 'Teman/Sahabat', guest_count: 2, invitation_status: 'terkirim', rsvp_status: 'tidak_hadir', notes: 'Titip kado, berhalangan karena melahirkan', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
+      { id: 'g10', wedding_id: 'demo-wedding-gratis', name: 'Bpk. Ketua RT 04 & Pengurus RW Sukajadi', side: 'cpp', group_name: 'Tetangga', guest_count: 3, invitation_status: 'belum', rsvp_status: 'menunggu', notes: 'Undangan fisik akan diantar langsung oleh Bayu', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
     ],
     rundown: [
       { id: 'r1', wedding_id: 'demo-wedding-gratis', title: 'Makeup & Busana Akad Nikah (Sunda Siger)', starts_at: '2026-11-28T05:00:00+07:00', ends_at: '2026-11-28T07:00:00+07:00', location: 'Ruang Rias Pengantin Puri Suryalaya', person_in_charge: 'Teh Nita (MUA D’Larasati)', sort_order: 1, notes: 'Sarapan hangat disiapkan sebelum pemasangan siger melati.', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
@@ -457,15 +487,16 @@ export const DEMO_ACCOUNTS: Record<DemoAccountId, DemoAccount> = {
     ],
     tasks: buildInitialTasks('demo-wedding-premium', '2026-12-19'),
     guests: [
-      { id: 'p-g1', wedding_id: 'demo-wedding-premium', name: 'Prof. Dr. Ir. Soegito Hardjono & Istri', group_name: 'VIP', guest_count: 2, invitation_status: 'terkirim', rsvp_status: 'hadir', notes: 'Mantan Direktur BUMN, tempat duduk Meja VIP 1', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
-      { id: 'p-g2', wedding_id: 'demo-wedding-premium', name: 'Keluarga Besar Wicaksono Solo', group_name: 'Keluarga Pria', guest_count: 6, invitation_status: 'terkirim', rsvp_status: 'hadir', notes: 'Rombongan keluarga ayah Dimas', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
-      { id: 'p-g3', wedding_id: 'demo-wedding-premium', name: 'Keluarga Besar Aryasuta Yogyakarta', group_name: 'Keluarga Wanita', guest_count: 8, invitation_status: 'terkirim', rsvp_status: 'hadir', notes: 'Keluarga ibu Aluna', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
-      { id: 'p-g4', wedding_id: 'demo-wedding-premium', name: 'Jajaran Direksi & Partner KPMG Jakarta', group_name: 'Rekan Kerja', guest_count: 10, invitation_status: 'terkirim', rsvp_status: 'hadir', notes: 'Kolega kantor Dimas', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
-      { id: 'p-g5', wedding_id: 'demo-wedding-premium', name: 'Alumni Arsitektur ITB 2015', group_name: 'Sahabat', guest_count: 12, invitation_status: 'terkirim', rsvp_status: 'hadir', notes: 'Sahabat dekat kampus Aluna', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
-      { id: 'p-g6', wedding_id: 'demo-wedding-premium', name: 'Bpk. Bambang Pamungkas & Nyonya', group_name: 'VIP', guest_count: 2, invitation_status: 'terkirim', rsvp_status: 'menunggu', notes: 'Kolega bisnis orang tua', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
-      { id: 'p-g7', wedding_id: 'demo-wedding-premium', name: 'Rekan Studio Arsitektur Aluna', group_name: 'Rekan Kerja', guest_count: 6, invitation_status: 'terkirim', rsvp_status: 'hadir', notes: 'Tim kantor Aluna', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
-      { id: 'p-g8', wedding_id: 'demo-wedding-premium', name: 'Dra. Endang Sulistyowati (Dosen Pembimbing)', group_name: 'VIP', guest_count: 2, invitation_status: 'terkirim', rsvp_status: 'hadir', notes: 'VIP Meja 2', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
-      { id: 'p-g9', wedding_id: 'demo-wedding-premium', name: 'dr. Satria Wibowo & Rekan', group_name: 'Sahabat', guest_count: 2, invitation_status: 'terkirim', rsvp_status: 'tidak_hadir', notes: 'Sedang tugas residensi di luar pulau', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
+      { id: 'p-g1', wedding_id: 'demo-wedding-premium', name: 'Prof. Dr. Ir. Soegito Hardjono & Istri', side: 'cpp', group_name: 'Tokoh/VIP', guest_count: 2, invitation_status: 'terkirim', rsvp_status: 'hadir', notes: 'Mantan Direktur BUMN, tempat duduk Meja VIP 1', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
+      { id: 'p-g2', wedding_id: 'demo-wedding-premium', name: 'Keluarga Besar Wicaksono Solo', side: 'cpp', group_name: 'Saudara', guest_count: 6, invitation_status: 'terkirim', rsvp_status: 'hadir', notes: 'Rombongan keluarga ayah Dimas', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
+      { id: 'p-g3', wedding_id: 'demo-wedding-premium', name: 'Keluarga Besar Aryasuta Yogyakarta', side: 'cpw', group_name: 'Saudara', guest_count: 8, invitation_status: 'terkirim', rsvp_status: 'hadir', notes: 'Keluarga ibu Aluna', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
+      { id: 'p-g4', wedding_id: 'demo-wedding-premium', name: 'Jajaran Direksi & Partner KPMG Jakarta', side: 'cpp', group_name: 'Rekan kerja', guest_count: 10, invitation_status: 'terkirim', rsvp_status: 'hadir', notes: 'Kolega kantor Dimas', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
+      { id: 'p-g5', wedding_id: 'demo-wedding-premium', name: 'Alumni Arsitektur ITB 2015', side: 'cpw', group_name: 'Teman/Sahabat', guest_count: 12, invitation_status: 'terkirim', rsvp_status: 'hadir', notes: 'Sahabat dekat kampus Aluna', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
+      { id: 'p-g6', wedding_id: 'demo-wedding-premium', name: 'Bpk. Bambang Pamungkas & Nyonya', side: 'cpp', group_name: 'Tokoh/VIP', guest_count: 2, invitation_status: 'terkirim', rsvp_status: 'menunggu', notes: 'Kolega bisnis orang tua', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
+      { id: 'p-g7', wedding_id: 'demo-wedding-premium', name: 'Rekan Studio Arsitektur Aluna', side: 'cpw', group_name: 'Rekan kerja', guest_count: 6, invitation_status: 'terkirim', rsvp_status: 'hadir', notes: 'Tim kantor Aluna', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
+      { id: 'p-g8', wedding_id: 'demo-wedding-premium', name: 'Dra. Endang Sulistyowati (Dosen Pembimbing)', side: 'cpw', group_name: 'Tokoh/VIP', guest_count: 2, invitation_status: 'terkirim', rsvp_status: 'hadir', notes: 'VIP Meja 2', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
+      { id: 'p-g9', wedding_id: 'demo-wedding-premium', name: 'dr. Satria Wibowo & Rekan', side: 'cpp', group_name: 'Teman/Sahabat', guest_count: 2, invitation_status: 'terkirim', rsvp_status: 'tidak_hadir', notes: 'Sedang tugas residensi di luar pulau', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },
+      ...buildDemoGuestCrowd('demo-wedding-premium', 160),
     ],
     rundown: [
       { id: 'p-r1', wedding_id: 'demo-wedding-premium', title: 'Executive MUA & Hair Styling Sesi 1 (Akad)', starts_at: '2026-12-19T06:00:00+07:00', ends_at: '2026-12-19T08:00:00+07:00', location: 'The Presidential Suite Plataran', person_in_charge: 'Marlene Hariman Studio', sort_order: 1, notes: 'Sarapan healthy bowl disajikan untuk kedua mempelai.', created_at: '2026-10-13T00:00:00Z', updated_at: '2026-10-13T00:00:00Z' },

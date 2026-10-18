@@ -101,6 +101,13 @@ Komponen di `src/components/ui/PageKit.tsx`. Urutan tetap supaya pengguna tidak 
   Ketuk tugas → lembar bawah berisi nama, target, catatan, bagian, hapus. Biaya/jumlah/toko tidak ditampilkan
   (belanja dicatat di Anggaran). ID tugas baru selalu `crypto.randomUUID()` (kolom uuid).
 
+- Tamu (`/app/guests`, 2026-10-18): dirancang untuk **ratusan undangan** di HP. Setiap tamu punya pihak (`guests.side` cpp/cpw,
+  label "Pria"/"Wanita", warna cpp/cpw + huruf P/W, bukan warna saja) dan kategori baku di `group_name`
+  (`src/lib/guests.ts`: Saudara, Teman/Sahabat, Rekan kerja, Tetangga, Kenalan orang tua, Tokoh/VIP, Lainnya; kategori sendiri boleh).
+  Urutan: ringkasan jawaban → **Rekap per kategori** (tabel kategori × Pria/Wanita/Total, angka = undangan + "n org", ketuk sel = saring daftar)
+  → segmen pihak (Semua/Pria/Wanita) + cari + saring kategori/jawaban → daftar per kategori (judul seksi lengket berisi jumlah).
+  Baris ±56px: P/W · nama · "n orang · catatan" · badge jawaban (ikon+teks) · tombol amplop 44px. Ketuk baris → lembar bawah
+  (jawaban & undangan langsung tersimpan, ubah data, hapus). Tambah tamu: lembar tetap terbuka setelah simpan, pihak & kategori diingat.
 - Berkas KUA (`/app/berkas`): daftar resmi PMA No. 30 Tahun 2024 di `src/lib/kuaDocuments.ts` (setiap item mencantumkan pasal).
   Kartu progres 3 kolom (CPP · CPW · Bersama) + batas daftar 10 hari kerja sebelum akad, tab per orang (hash `#cpp/#cpw/#joint`),
   bagian "Wajib disiapkan" (centang bulat warna peran) dan "Hanya jika berlaku" (saklar Berlaku, baru bisa dicentang setelah menyala).

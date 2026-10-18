@@ -3,6 +3,7 @@ import { db } from '@/lib/supabase'
 import { getCurrentDemoAccount } from '@/lib/demoData'
 import { toDateOnly } from '@/lib/format'
 import { FREE_GUEST_LIMIT } from '@/lib/plans'
+import { normalizeGuest } from '@/lib/guests'
 import {
   addDemoCategory,
   addDemoExpense,
@@ -624,13 +625,24 @@ export function useChecklistData(weddingId: string, _weddingDateStr: string | nu
 // ---------------------------------------------------------------------------
 // 4. GUESTS HOOK
 // ---------------------------------------------------------------------------
+export type GuestDraft = Pick<Guest, 'name' | 'side' | 'group_name' | 'guest_count' | 'notes'>
+
+function isMissingSideColumn(error: { code?: string; message?: string }) {
+  return (error.code === 'PGRST204' || error.code === '42703') && /side/.test(error.message ?? '')
+}
+
+function omitSide<T extends { side?: unknown }>(row: T): Omit<T, 'side'> {
+  const { side: _side, ...rest } = row
+  return rest
+}
+
 export function useGuestsData(weddingId: string) {
   const [state, setState] = useState<Load<Guest[]>>({ status: 'loading' })
 
   const load = useCallback(async () => {
     const demo = getCurrentDemoAccount()
     if (demo) {
-      setState({ status: 'ready', data: getDemoGuests(demo.id) })
+      setState({ status: 'ready', data: getDemoGuests(demo.id).map(normalizeGuest) })
       return
     }
 
@@ -642,7 +654,7 @@ export function useGuestsData(weddingId: string) {
       return
     }
 
-    setState({ status: 'ready', data: data ?? [] })
+    setState({ status: 'ready', data: (data ?? []).map(normalizeGuest) })
   }, [weddingId])
 
   useEffect(() => {
@@ -704,35 +716,44 @@ export function useGuestsData(weddingId: string) {
   )
 
   const createGuest = useCallback(
-    async (input: { name: string; group_name?: string | null; guest_count?: number; notes?: string | null }) => {
+    async (input: GuestDraft) => {
       const demo = getCurrentDemoAccount()
       if (demo) {
         if (!demo.isPremium && getDemoGuests(demo.id).length >= FREE_GUEST_LIMIT) throw new GuestLimitError()
         addDemoGuest(demo.id, {
           wedding_id: weddingId,
-          name: input.name,
-          group_name: input.group_name ?? 'Keluarga',
-          guest_count: input.guest_count ?? 1,
+          ...input,
           invitation_status: 'belum',
           rsvp_status: 'menunggu',
-          notes: input.notes ?? null,
         })
         void load()
         return
       }
-      const { error } = await db().from('guests').insert({
-        wedding_id: weddingId,
-        name: input.name,
-        group_name: input.group_name ?? 'Keluarga',
-        guest_count: input.guest_count ?? 1,
-        invitation_status: 'belum',
-        rsvp_status: 'menunggu',
-        notes: input.notes ?? null,
-      })
+      const row = { wedding_id: weddingId, ...input, invitation_status: 'belum' as const, rsvp_status: 'menunggu' as const }
+      let { error } = await db().from('guests').insert(row)
+      // Kolom `side` belum ada (migration 000011 belum dijalankan): simpan tanpa pihak.
+      if (error && isMissingSideColumn(error)) ({ error } = await db().from('guests').insert(omitSide(row)))
       void load()
       if (error) throw error.hint === 'premium_required' ? new GuestLimitError() : new Error('Gagal menambahkan tamu. Coba lagi.')
     },
     [weddingId, load],
+  )
+
+  const updateGuest = useCallback(
+    async (guestId: string, patch: GuestDraft) => {
+      const apply = (list: Guest[]) => list.map((g) => (g.id === guestId ? { ...g, ...patch } : g))
+      const demo = getCurrentDemoAccount()
+      if (demo) {
+        saveDemoGuests(demo.id, apply(getDemoGuests(demo.id)))
+        setState((curr) => (curr.status === 'ready' ? { status: 'ready', data: apply(curr.data) } : curr))
+        return
+      }
+      let { error } = await db().from('guests').update(patch).eq('id', guestId)
+      if (error && isMissingSideColumn(error)) ({ error } = await db().from('guests').update(omitSide(patch)).eq('id', guestId))
+      if (error) throw new Error('Gagal menyimpan tamu. Coba lagi.')
+      setState((curr) => (curr.status === 'ready' ? { status: 'ready', data: apply(curr.data) } : curr))
+    },
+    [],
   )
 
   const deleteGuest = useCallback(
@@ -750,7 +771,7 @@ export function useGuestsData(weddingId: string) {
     [load],
   )
 
-  return { state, reload: load, updateGuestRsvp, updateGuestInvitation, createGuest, deleteGuest }
+  return { state, reload: load, updateGuestRsvp, updateGuestInvitation, createGuest, updateGuest, deleteGuest }
 }
 
 // ---------------------------------------------------------------------------

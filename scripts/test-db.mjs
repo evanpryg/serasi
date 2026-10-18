@@ -57,6 +57,7 @@ const tests = {
   'uji rincian anggaran': readFileSync(join(root, 'supabase', 'tests', 'budget_items.sql'), 'utf8'),
   'uji peran CPP/CPW & berkas': readFileSync(join(root, 'supabase', 'tests', 'couple_sides.sql'), 'utf8'),
   'uji Premium & pembayaran': readFileSync(join(root, 'supabase', 'tests', 'premium_access.sql'), 'utf8'),
+  'uji pihak tamu': readFileSync(join(root, 'supabase', 'tests', 'guest_sides.sql'), 'utf8'),
 }
 let failed = false
 
@@ -77,7 +78,7 @@ async function runAll(db) {
   if (error) {
     failed = true
     console.error('✗ gagal →', error)
-  } else console.log('✓ migration, uji isolasi, akun pasangan, tabungan bersama, rincian anggaran, peran CPP/CPW + berkas, dan Premium + pembayaran lulus')
+  } else console.log('✓ migration, uji isolasi, akun pasangan, tabungan bersama, rincian anggaran, peran CPP/CPW + berkas, Premium + pembayaran, dan pihak tamu lulus')
 }
 
 // 2. Mutation test: kebocoran yang sengaja dibuat HARUS terdeteksi
