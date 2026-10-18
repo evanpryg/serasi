@@ -26,6 +26,23 @@ describe('calculateFinance', () => {
     expect(s.allocationGap).toBe(0)
   })
 
+  it('item lunas memakai nominal aktual, item rencana memakai harga', () => {
+    const s = calculateFinance(
+      base({
+        expenses: [
+          { category_id: 'venue', amount: 1_000_000, actual_amount: 900_000, status: 'paid' },
+          { category_id: 'venue', amount: 500_000, actual_amount: null, status: 'paid' },
+          { category_id: 'venue', amount: 300_000, actual_amount: 999, status: 'planned' },
+        ],
+      }),
+    )
+    expect(s.actualSpent).toBe(1_400_000)
+    expect(s.plannedExpenses).toBe(300_000)
+    const venue = s.categories.find((c) => c.id === 'venue')!
+    expect(venue.actual).toBe(1_400_000)
+    expect(venue.committed).toBe(1_700_000)
+  })
+
   it('tidak menghitung kategori yang diarsipkan', () => {
     const s = calculateFinance(
       base({

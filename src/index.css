@@ -142,6 +142,65 @@
   font-feature-settings: 'tnum' 1, 'lnum' 1;
 }
 
+/*
+ * Latar aplikasi: dua cahaya lembut (warna peran + emas) dan pola titik tipis yang memudar ke bawah,
+ * supaya halaman tidak terasa polos tanpa mengganggu keterbacaan angka. Workspace Premium mendapat
+ * cahaya emas lebih kuat + garis emas di tepi atas (lihat [data-premium]).
+ */
+.app-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(56rem 34rem at 108% -8%, color-mix(in srgb, var(--color-primary) 13%, transparent), transparent 62%),
+    radial-gradient(44rem 30rem at -12% 104%, color-mix(in srgb, var(--color-gold) 18%, transparent), transparent 60%),
+    radial-gradient(30rem 22rem at 40% 40%, color-mix(in srgb, var(--color-partner) 5%, transparent), transparent 70%),
+    var(--color-canvas);
+}
+.app-backdrop::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(color-mix(in srgb, var(--color-ink) 9%, transparent) 1px, transparent 1.2px);
+  background-size: 22px 22px;
+  mask-image: linear-gradient(to bottom, black, transparent 55%);
+  -webkit-mask-image: linear-gradient(to bottom, black, transparent 55%);
+}
+[data-premium] .app-backdrop {
+  background:
+    radial-gradient(56rem 34rem at 108% -8%, color-mix(in srgb, var(--color-gold) 26%, transparent), transparent 62%),
+    radial-gradient(44rem 30rem at -12% 104%, color-mix(in srgb, var(--color-gold) 24%, transparent), transparent 60%),
+    radial-gradient(40rem 26rem at 30% 20%, color-mix(in srgb, var(--color-primary) 8%, transparent), transparent 70%),
+    var(--color-canvas);
+}
+[data-premium] .app-backdrop::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--color-gold) 20%, var(--color-gold-soft) 50%, var(--color-gold) 80%, transparent);
+}
+
+/* Kilau emas sekali lewat untuk penanda Premium (dimatikan oleh prefers-reduced-motion di bawah). */
+@keyframes premium-sheen {
+  from { transform: translateX(-120%) skewX(-18deg); }
+  to { transform: translateX(260%) skewX(-18deg); }
+}
+.premium-sheen {
+  position: relative;
+  overflow: hidden;
+}
+.premium-sheen::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.35), transparent);
+  animation: premium-sheen 2.4s 0.6s var(--ease-out-soft) both;
+  pointer-events: none;
+}
+
 @utility safe-bottom {
   padding-bottom: env(safe-area-inset-bottom);
 }

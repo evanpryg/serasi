@@ -9,6 +9,15 @@ import type { ExpenseInput } from '@/hooks/usePlanningData'
 import { normalizeLink } from './links'
 import { PhotoPicker } from './ItemPhoto'
 
+/**
+ * Patch realisasi: `actual_amount` hanya dikirim bila berbeda dari harga (atau perlu dikosongkan),
+ * sehingga item tetap bisa disimpan sebelum migration 000012 dijalankan.
+ */
+export function actualPatch(item: Pick<Expense, 'actual_amount'>, amount: number, actual: number | null): Pick<ExpenseInput, 'actual_amount'> {
+  if (actual != null && actual !== amount) return { actual_amount: actual }
+  return item.actual_amount != null ? { actual_amount: null } : {}
+}
+
 type ItemFormProps = {
   /** Item yang diubah; kosong = tambah item baru. */
   initial?: Expense
@@ -30,6 +39,9 @@ export function ItemForm({ initial, remainingBefore, onSubmit, uploadPhoto, onCa
   const isEdit = Boolean(initial)
   const [title, setTitle] = useState(initial?.title ?? '')
   const [amount, setAmount] = useState<number | null>(initial ? initial.amount : null)
+  const isPaid = initial?.status === 'paid'
+  const [actual, setActual] = useState<number | null>(isPaid ? (initial?.actual_amount ?? initial?.amount ?? null) : null)
+  const [paidDate, setPaidDate] = useState(initial?.expense_date ?? '')
   const [link, setLink] = useState(initial?.link_url ?? '')
   const [notes, setNotes] = useState(initial?.notes ?? '')
   const [photo, setPhoto] = useState<File | null>(null)
@@ -67,6 +79,7 @@ export function ItemForm({ initial, remainingBefore, onSubmit, uploadPhoto, onCa
         link_url: parsedLink.url,
         notes: notes.trim() || null,
         ...(proof_path !== undefined && { proof_path }),
+        ...(isPaid && initial && { ...actualPatch(initial, amount ?? 0, actual), ...(paidDate && { expense_date: paidDate }) }),
       })
       if (!isEdit) {
         setTitle('')
@@ -103,10 +116,17 @@ export function ItemForm({ initial, remainingBefore, onSubmit, uploadPhoto, onCa
           autoFocus={autoFocus}
           maxLength={120}
         />
-        <MoneyField label="Harga" value={amount} onChange={setAmount} />
+        <MoneyField label={isPaid ? 'Harga rencana' : 'Harga'} value={amount} onChange={setAmount} />
       </div>
 
-      {amount != null && amount > 0 && (
+      {isPaid && (
+        <div className="mt-3 grid gap-3 rounded-xl border border-success/25 bg-success-soft/50 p-3 sm:grid-cols-[minmax(0,1fr)_11rem]">
+          <MoneyField label="Dibayar (aktual)" hint="Nominal yang benar-benar keluar." value={actual} onChange={setActual} />
+          <TextField label="Tanggal bayar" type="date" value={paidDate} onChange={(e) => setPaidDate(e.target.value)} />
+        </div>
+      )}
+
+      {!isPaid && amount != null && amount > 0 && (
         <p className={cn('mt-2 text-sm tabular', after < 0 ? 'font-semibold text-danger' : 'text-ink-muted')}>
           {after < 0 ? `Pos ini akan lebih ${formatRupiah(-after)}` : `Sisa pos setelah ini: ${formatRupiah(after)}`}
         </p>

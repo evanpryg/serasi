@@ -86,9 +86,21 @@ Komponen di `src/components/ui/PageKit.tsx`. Urutan tetap supaya pengguna tidak 
   memuat nominal ("Simpan Rp 1.000.000"), konfirmasi sukses inline yang hilang sendiri (4 dtk).
   Target: catat setoran dalam 2 ketukan. Layar ≥1280px: form menempel di kolom kanan.
 - Angka keuangan di halaman mana pun memakai `calculateFinance` (lib/finance) agar sama dengan Dashboard.
-- Anggaran: **tanpa tab**, padat di mobile. Ringkasan = angka sisa + bar + 3 baris (dibayar/belum/uang ada).
-  Pos = kartu accordion (`h3 > button`, isi hanya span): baris 1 nama (satu baris) + chevron, baris 2 info
-  (badge · n item · jatah singkat "Rp 5 jt") dan "sisa Rp …" di kanan. **Tombol "Tambah pos" hanya di bawah daftar.**
+- Anggaran (2026-10-18): **Acara → Pos → Item.** Lamaran, Prewedding, Wedding, Honeymoon = acara bawaan (`budget_events`,
+  CRUD lewat lembar "Kelola acara": nama, ikon dari daftar `lib/budgetIcons`, tanggal opsional). Pos dengan nama sama boleh ada
+  di acara berbeda (Make up lamaran ≠ Make up wedding). Hapus acara tidak menghapus pos (pindah ke "Tanpa acara").
+  Urutan: kartu ringkasan **gelap** (gradien primary-deep→primary, cincin emas dekoratif, angka putih, 3 stat kaca:
+  Aktual terpakai / Belum dibayar / Uang yang ada) → kartu pilih acara (ikon + "aktual / anggaran", geser horizontal di mobile)
+  → per acara: kepala berwarna (tile ikon, tanggal, Anggaran/Aktual/Sisa) + pos → **Catatan pengeluaran** → jadwal bayar vendor.
+  Warna acara bergilir primary/gold/partner/success; selalu disertai ikon + nama.
+  **Realisasi:** `expenses.amount` = harga rencana, `actual_amount` = yang benar-benar dibayar (null = sama). Mencentang item membuka
+  panel "Berapa yang benar-benar dibayar?" (nominal default = harga, tanggal hari ini, "Sesuai harga"). Item lunas dihitung
+  `expenseValue()` di lib/finance. Selisih ditampilkan "hemat"/"lebih" (ikon + teks). Badge pos "Hemat Rp …" hanya bila item dibayar
+  lebih murah dari rencananya — sisa jatah yang belum dibelanjakan tetap disebut "sisa", bukan hemat.
+  Catatan pengeluaran = item lunas + pembayaran vendor `paid`, per bulan, ada form catat cepat (pos dikelompokkan per acara).
+  Ikon pos ditebak dari nama (`posIcon`): kuas = make up, bunga = dekor, kamera = dokumentasi, dst.
+  Pos = kartu accordion (`h3 > button`, isi hanya span): tile ikon · nama + chevron, baris 2 badge · "aktual Rp … / anggaran Rp …"
+  dan "sisa Rp …" di kanan. Tombol tambah pos ada di bawah tiap acara.
   Isi pos: baris item ringkas (centang bulat = lunas · foto kecil · nama · harga). Ketuk item → detail:
   foto besar (ketuk = layar penuh), kartu pratinjau link (nama produk dibaca dari URL Shopee/Tokopedia,
   tanpa jaringan), catatan, Tambah foto / Ubah / Hapus. Form **tidak** langsung tampil: tombol "+ Tambah item"
@@ -122,6 +134,14 @@ Komponen di `src/components/ui/PageKit.tsx`. Urutan tetap supaya pengguna tidak 
   Checkout: 3 langkah, nominal besar + salin, QR hitam-putih murni (pengecualian token warna demi pemindai), tombol
   "Simpan gambar QR" untuk bayar dari HP yang sama, nama merchant QRIS ditampilkan agar pembayar tidak ragu.
 - Akun demo tidak pernah menampilkan QR yang bisa dibayar.
+- **Workspace Premium harus terasa beda di setiap halaman** (`data-premium` di root AppShell): latar `.app-backdrop` bercahaya emas
+  + garis emas 3px di tepi atas, sidebar & header mobile berbingkai emas, kartu pasangan berbingkai gradien emas + badge "Premium aktif",
+  kartu "Serasi Premium" gelap-emas menggantikan ajakan upgrade, chip "Premium" di header mobile, kilau `.premium-sheen` sekali lewat
+  (mati saat reduced motion).
+
+## Latar
+- `.app-backdrop` (index.css): dua cahaya radial (primary + gold) + pola titik tipis yang memudar ke bawah. Kartu tetap putih solid
+  agar angka mudah dibaca; jangan pakai glassmorphism pada data keuangan (kecuali stat di atas kartu ringkasan gelap).
 
 ## Format lokal
 - Rupiah: `Rp 12.500.000` (Intl `id-ID`, tanpa desimal). Singkat: `Rp 12,5 jt`.

@@ -58,6 +58,7 @@ const tests = {
   'uji peran CPP/CPW & berkas': readFileSync(join(root, 'supabase', 'tests', 'couple_sides.sql'), 'utf8'),
   'uji Premium & pembayaran': readFileSync(join(root, 'supabase', 'tests', 'premium_access.sql'), 'utf8'),
   'uji pihak tamu': readFileSync(join(root, 'supabase', 'tests', 'guest_sides.sql'), 'utf8'),
+  'uji acara anggaran': readFileSync(join(root, 'supabase', 'tests', 'budget_events.sql'), 'utf8'),
 }
 let failed = false
 
@@ -78,7 +79,7 @@ async function runAll(db) {
   if (error) {
     failed = true
     console.error('✗ gagal →', error)
-  } else console.log('✓ migration, uji isolasi, akun pasangan, tabungan bersama, rincian anggaran, peran CPP/CPW + berkas, Premium + pembayaran, dan pihak tamu lulus')
+  } else console.log('✓ migration, uji isolasi, akun pasangan, tabungan bersama, rincian anggaran, peran CPP/CPW + berkas, Premium + pembayaran, pihak tamu, dan acara anggaran lulus')
 }
 
 // 2. Mutation test: kebocoran yang sengaja dibuat HARUS terdeteksi
@@ -117,6 +118,13 @@ const mutations = {
      create policy leak on public.payment_orders for select to authenticated using (true);`,
   'cek admin dilewati': `create or replace function public.is_app_admin() returns boolean language sql stable as $$ select true $$;`,
   'batas tamu Gratis dihapus': `drop trigger guests_free_limit on public.guests;`,
+  'acara terbaca workspace lain': `drop policy "Workspace member: select" on public.budget_events;
+     create policy leak on public.budget_events for select to authenticated using (true);`,
+  'pos tertaut acara lintas workspace': `alter table public.budget_categories drop constraint budget_categories_event_fk;
+     alter table public.budget_categories add foreign key (event_id) references public.budget_events (id) on delete set null;`,
+  'hapus acara ikut menghapus pos': `alter table public.budget_categories drop constraint budget_categories_event_fk;
+     alter table public.budget_categories add constraint budget_categories_event_fk foreign key (event_id, wedding_id)
+       references public.budget_events (id, wedding_id) on delete cascade;`,
   'topik deep talk Premium terbuka': `drop policy "Deeptalk: premium topics" on public.deeptalk_answers;`,
   'foto item tanpa Premium': `drop policy "Item photos need premium" on storage.objects;`,
   'nominal pesanan tidak unik': `drop index public.payment_orders_open_amount;

@@ -85,13 +85,19 @@ function AppShell() {
   const isDemo = Boolean(getCurrentDemoAccount())
 
   return (
-    <div className="min-h-dvh bg-canvas lg:grid lg:grid-cols-[17rem_minmax(0,1fr)]">
+    <div data-premium={isPremium || undefined} className="relative isolate min-h-dvh lg:grid lg:grid-cols-[17rem_minmax(0,1fr)]">
+      <div className="app-backdrop" aria-hidden />
       <a href="#main" className="sr-only z-50 rounded-lg bg-primary px-4 py-2 text-on-primary focus:not-sr-only focus:fixed focus:left-4 focus:top-4">
         Lewati ke konten utama
       </a>
 
       {/* Sidebar desktop */}
-      <aside className="sticky top-0 hidden h-dvh flex-col overflow-y-auto border-r border-border bg-surface/70 px-4 py-6 lg:flex">
+      <aside
+        className={cn(
+          'sticky top-0 hidden h-dvh flex-col overflow-y-auto border-r bg-surface/75 px-4 py-6 backdrop-blur-md lg:flex',
+          isPremium ? 'border-gold/40' : 'border-border',
+        )}
+      >
         <Logo to="/app/dashboard" className="px-2" />
 
         {/* Demo badge */}
@@ -102,20 +108,28 @@ function AppShell() {
           </div>
         )}
 
-        <div className="mx-2 mt-3 flex items-center gap-3 rounded-xl bg-gradient-to-br from-primary-soft/80 to-partner-soft/70 p-3">
-          {me && (
-            <div className="flex -space-x-2.5">
-              {couple.map((mb) => (
-                <MemberAvatar key={mb.userId} member={mb} size="sm" />
-              ))}
+        {/* Premium: bingkai emas di kartu pasangan agar statusnya terasa di setiap halaman */}
+        <div className={cn('mx-2 mt-3 rounded-[0.85rem]', isPremium && 'bg-gradient-to-br from-gold via-gold-soft to-gold p-px shadow-[0_8px_24px_-12px_var(--color-gold)]')}>
+          <div
+            className={cn(
+              'flex items-center gap-3 rounded-xl p-3',
+              isPremium ? 'bg-gradient-to-br from-surface via-surface to-gold-soft/70' : 'bg-gradient-to-br from-primary-soft/80 to-partner-soft/70',
+            )}
+          >
+            {me && (
+              <div className="flex -space-x-2.5">
+                {couple.map((mb) => (
+                  <MemberAvatar key={mb.userId} member={mb} size="sm" />
+                ))}
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-ink">
+                {partner && me ? `${couple.map((mb) => firstName(mb.name)).join(' & ')}` : wedding.title}
+              </p>
+              <p className="truncate text-xs text-ink-muted">{wedding.wedding_date ? formatDate(wedding.wedding_date) : wedding.city}</p>
+              {isPremium && <PremiumBadge className="premium-sheen mt-1" label="Premium aktif" />}
             </div>
-          )}
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-ink">
-              {partner && me ? `${couple.map((mb) => firstName(mb.name)).join(' & ')}` : wedding.title}
-            </p>
-            <p className="truncate text-xs text-ink-muted">{wedding.wedding_date ? formatDate(wedding.wedding_date) : wedding.city}</p>
-            {isPremium && <PremiumBadge className="mt-1" />}
           </div>
         </div>
         <nav aria-label="Navigasi utama" className="mt-6 flex-1 space-y-6">
@@ -130,7 +144,7 @@ function AppShell() {
             />
           )}
         </nav>
-        {!isPremium && <UpgradeCard />}
+        {isPremium ? <PremiumCard /> : <UpgradeCard />}
         <div className="border-t border-border pt-4">
           {isDemo ? (
             <div className="space-y-2">
@@ -167,9 +181,24 @@ function AppShell() {
       </aside>
 
       <div className="min-w-0">
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-canvas/85 px-4 backdrop-blur lg:hidden">
+        <header
+          className={cn(
+            'sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-canvas/80 px-4 backdrop-blur-md lg:hidden',
+            isPremium ? 'border-gold/40' : 'border-border',
+          )}
+        >
           <Logo to="/app/dashboard" />
           <div className="flex items-center gap-2">
+            {isPremium && (
+              <NavLink
+                to="/app/premium"
+                aria-label="Premium aktif"
+                className="premium-sheen inline-flex h-8 items-center gap-1 rounded-full bg-gradient-to-br from-primary-deep to-primary px-2.5 text-xs font-semibold text-gold-on-dark ring-1 ring-gold/50"
+              >
+                <Crown className="size-3.5" aria-hidden />
+                Premium
+              </NavLink>
+            )}
             {isDemo && (
               <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-wide text-amber-700 dark:bg-amber-950 dark:text-amber-300">
                 <FlaskConical className="size-3" aria-hidden />
@@ -197,6 +226,25 @@ function AppShell() {
       <MobileNav onSignOut={() => void signOut()} isDemo={isDemo} isAdmin={isAdmin} />
       <SideGate />
     </div>
+  )
+}
+
+/** Kartu status Premium di sidebar: gelap + emas, beda jelas dari ajakan upgrade paket Gratis. */
+function PremiumCard() {
+  return (
+    <NavLink
+      to="/app/premium"
+      className="premium-sheen relative mx-1 mb-4 flex items-center gap-3 overflow-hidden rounded-xl bg-gradient-to-br from-primary-deep to-primary p-3 text-white shadow-glow ring-1 ring-gold/50 transition-transform hover:-translate-y-0.5"
+    >
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-gold to-gold-on-dark text-primary-deep shadow-sm">
+        <Crown className="size-4" aria-hidden />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold text-gold-on-dark">Serasi Premium</span>
+        <span className="block text-xs text-white/85">Semua fitur terbuka · selamanya</span>
+      </span>
+      <ChevronRight className="size-4 shrink-0 text-white/70" aria-hidden />
+    </NavLink>
   )
 }
 

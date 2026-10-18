@@ -92,9 +92,23 @@ export type DeepTalkAnswer = {
   updated_at: string
 }
 
+/** Acara anggaran (Lamaran, Prewedding, Wedding, Honeymoon, atau buatan sendiri). */
+export type BudgetEvent = Timestamps & {
+  id: string
+  wedding_id: string
+  name: string
+  /** Kunci ikon dari lib/budgetIcons (bukan teks bebas). */
+  icon: string
+  event_date: string | null
+  sort_order: number
+  template_key: string | null
+}
+
 export type BudgetCategory = Timestamps & {
   id: string
   wedding_id: string
+  /** Acara pemilik pos; null = belum dikelompokkan. */
+  event_id?: string | null
   name: string
   planned_amount: number
   is_reserve: boolean
@@ -126,7 +140,10 @@ export type Expense = Timestamps & {
   category_id: string
   vendor_id: string | null
   title: string
+  /** Harga rencana/anggaran item. */
   amount: number
+  /** Nominal yang benar-benar dibayar (null = sama dengan amount). */
+  actual_amount?: number | null
   expense_date: string | null
   status: ExpenseStatus
   fund_source: string | null
@@ -281,6 +298,7 @@ export type Database = {
     Tables: {
       profiles: Table<Profile, 'id'>
       weddings: Table<Wedding, 'title' | 'city'>
+      budget_events: Table<BudgetEvent, 'wedding_id' | 'name'>
       budget_categories: Table<BudgetCategory, 'wedding_id' | 'name'>
       wedding_vendors: Table<WeddingVendor, 'wedding_id'>
       expenses: Table<Expense, 'wedding_id' | 'category_id' | 'title' | 'amount'>

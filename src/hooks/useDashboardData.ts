@@ -31,7 +31,8 @@ export function useDashboardData(weddingId: string) {
 
     const [categories, expenses, vendors, payments, tasks] = await Promise.all([
       client.from('budget_categories').select('id, name, planned_amount, is_archived, is_reserve').eq('wedding_id', weddingId).order('sort_order'),
-      client.from('expenses').select('category_id, amount, status').eq('wedding_id', weddingId),
+      // `*` agar actual_amount ikut bila migration 000012 sudah jalan, tanpa error bila belum.
+      client.from('expenses').select('*').eq('wedding_id', weddingId),
       client.from('wedding_vendors').select('id, category_id, status, contract_amount, custom_name').eq('wedding_id', weddingId),
       client.from('payments').select('id, wedding_vendor_id, amount, status, due_date').eq('wedding_id', weddingId),
       client

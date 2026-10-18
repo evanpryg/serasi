@@ -1,6 +1,23 @@
 import { useId, useState } from 'react'
 import { Link } from 'react-router'
-import { AlertTriangle, Check, ChevronDown, ExternalLink, ImageIcon, ImagePlus, Link2, Loader2, Pencil, Plus, ShoppingBag, StickyNote, Store, Trash2 } from 'lucide-react'
+import {
+  AlertTriangle,
+  Check,
+  ChevronDown,
+  ExternalLink,
+  ImageIcon,
+  ImagePlus,
+  Link2,
+  Loader2,
+  Pencil,
+  Plus,
+  ShoppingBag,
+  StickyNote,
+  Store,
+  Trash2,
+  TrendingDown,
+  TrendingUp,
+} from 'lucide-react'
 import { Badge, Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { AnimatePresence, m, EASE_OUT } from '@/components/motion'
@@ -8,10 +25,13 @@ import { PremiumBadge, premiumHref } from '@/components/premium/Premium'
 import { usePremium } from '@/hooks/usePremium'
 import { cn } from '@/lib/cn'
 import { formatDateShort, formatRupiah, formatRupiahShort } from '@/lib/format'
-import type { CategorySummary } from '@/lib/finance'
-import type { BudgetCategory, Expense } from '@/lib/database.types'
+import { expenseValue, type CategorySummary } from '@/lib/finance'
+import { posIcon } from '@/lib/budgetIcons'
+import type { BudgetCategory, BudgetEvent, Expense } from '@/lib/database.types'
 import type { CategoryInput, ExpenseInput } from '@/hooks/usePlanningData'
-import { ItemForm } from './ItemForm'
+import { MoneyField, TextField } from '@/components/ui/Field'
+import { toDateOnly } from '@/lib/format'
+import { ItemForm, actualPatch } from './ItemForm'
 import { CategoryForm } from './CategoryForm'
 import { linkPreview } from './links'
 import { PhotoImg, PhotoLightbox, usePhotoUrl } from './ItemPhoto'
@@ -34,6 +54,8 @@ type CategoryCardProps = {
   onAskDeleteCategory: () => void
   uploadPhoto: (file: File) => Promise<string>
   removePhoto: (path: string | null | undefined) => Promise<void>
+  /** Acara yang tersedia (untuk memindahkan pos saat diubah). */
+  events?: BudgetEvent[]
 }
 
 function share(part: number, whole: number) {
@@ -55,6 +77,7 @@ export function CategoryCard({
   onAskDeleteCategory,
   uploadPhoto,
   removePhoto,
+  events,
 }: CategoryCardProps) {
   const [editingPos, setEditingPos] = useState(false)
   const [editingItem, setEditingItem] = useState<string | null>(null)
@@ -69,8 +92,12 @@ export function CategoryCard({
   const left = planned - committed
   const over = left < 0
   const usedUp = !over && planned > 0 && left === 0
-  const nearlyOut = !over && !usedUp && planned > 0 && committed / planned >= 0.9
   const itemCount = items.length + vendors.length
+  const PosIcon = posIcon(category.name, category.is_reserve)
+  // Selisih harga rencana item vs yang benar-benar dibayar (positif = lebih murah).
+  const itemSavings = items.filter((i) => i.status === 'paid').reduce((acc, i) => acc + (i.amount - expenseValue(i)), 0)
+  const saved = !over && itemSavings > 0
+  const nearlyOut = !over && !usedUp && !saved && planned > 0 && committed / planned >= 0.9
 
   /** Simpan perubahan item; foto lama dihapus dari storage bila diganti/dihapus. */
   async function saveItem(item: Expense, input: Partial<ExpenseInput>) {
@@ -89,35 +116,56 @@ export function CategoryCard({
           aria-controls={bodyId}
           className="block w-full cursor-pointer px-4 py-3.5 text-left transition-colors hover:bg-surface-muted/40 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary sm:p-5"
         >
-          <span className="flex items-center gap-2">
-            <span className="block min-w-0 flex-1 truncate font-semibold text-ink sm:text-lg">{category.name}</span>
-            <ChevronDown className={cn('size-5 shrink-0 text-ink-subtle transition-transform duration-200', open && 'rotate-180')} aria-hidden />
-          </span>
-          <span className="mt-0.5 flex items-end justify-between gap-3">
-            <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs font-normal text-ink-muted sm:text-sm">
-              {category.is_reserve && <Badge tone="gold">Cadangan</Badge>}
-              {over && (
-                <Badge tone="danger">
-                  <AlertTriangle className="size-3" aria-hidden />
-                  Lebih
-                </Badge>
+          <span className="flex items-start gap-3">
+            <span
+              aria-hidden
+              className={cn(
+                'mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-xl sm:size-11',
+                category.is_reserve ? 'bg-gold-soft text-gold-text' : over ? 'bg-danger-soft text-danger' : 'bg-primary-soft text-primary',
               )}
-              {nearlyOut && <Badge tone="warning">Hampir habis</Badge>}
-              {usedUp && <Badge tone="warning">Habis</Badge>}
-              <span>
-                {itemCount === 0 ? 'Belum ada item' : `${itemCount} item`} · jatah{' '}
-                <span className="tabular sm:hidden">{formatRupiahShort(planned)}</span>
-                <span className="hidden tabular sm:inline">{formatRupiah(planned)}</span>
-              </span>
+            >
+              <PosIcon className="size-5" />
             </span>
-            <span className="block shrink-0 text-right leading-tight">
-              <span className="mr-1.5 text-xs font-normal text-ink-subtle">{over ? 'lebih' : 'sisa'}</span>
-              <span className={cn('font-num text-lg font-semibold sm:text-2xl', over ? 'text-danger' : 'text-ink')}>{formatRupiah(Math.abs(left))}</span>
+            <span className="block min-w-0 flex-1">
+              <span className="flex items-center gap-2">
+                <span className="block min-w-0 flex-1 truncate font-semibold text-ink sm:text-lg">{category.name}</span>
+                <ChevronDown className={cn('size-5 shrink-0 text-ink-subtle transition-transform duration-200', open && 'rotate-180')} aria-hidden />
+              </span>
+              <span className="mt-0.5 flex items-end justify-between gap-3">
+                <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs font-normal text-ink-muted sm:text-sm">
+                  {category.is_reserve && <Badge tone="gold">Cadangan</Badge>}
+                  {over && (
+                    <Badge tone="danger">
+                      <AlertTriangle className="size-3" aria-hidden />
+                      Lebih
+                    </Badge>
+                  )}
+                  {nearlyOut && <Badge tone="warning">Hampir habis</Badge>}
+                  {usedUp && <Badge tone="warning">Habis</Badge>}
+                  {saved && (
+                    <Badge tone="success">
+                      <TrendingDown className="size-3" aria-hidden />
+                      Hemat {formatRupiahShort(itemSavings)}
+                    </Badge>
+                  )}
+                  <span>
+                    aktual <strong className="font-semibold text-ink tabular">{formatRupiahShort(paid)}</strong> / anggaran{' '}
+                    <span className="tabular sm:hidden">{formatRupiahShort(planned)}</span>
+                    <span className="hidden tabular sm:inline">{formatRupiah(planned)}</span>
+                  </span>
+                </span>
+                <span className="block shrink-0 text-right leading-tight">
+                  <span className="mr-1.5 text-xs font-normal text-ink-subtle">{over ? 'lebih' : 'sisa'}</span>
+                  <span className={cn('font-num text-lg font-semibold sm:text-2xl', over ? 'text-danger' : 'text-ink')}>
+                    {formatRupiah(Math.abs(left))}
+                  </span>
+                </span>
+              </span>
             </span>
           </span>
 
           {/* Bar dekoratif; angkanya dibacakan dari teks di dalam rincian. */}
-          <span aria-hidden className="relative mt-2.5 block h-1.5 overflow-hidden rounded-full bg-surface-muted">
+          <span aria-hidden className="relative mt-2.5 block h-1.5 overflow-hidden rounded-full bg-surface-muted sm:ml-14">
             <span
               className={cn('absolute inset-y-0 left-0 w-full origin-left rounded-full transition-transform duration-500', over ? 'bg-danger/35' : 'bg-gold')}
               style={{ transform: `scaleX(${share(committed, planned)})` }}
@@ -145,6 +193,7 @@ export function CategoryCard({
                 <div className="py-2">
                   <CategoryForm
                     initial={category}
+                    events={events}
                     onSubmit={async (input) => {
                       await onUpdateCategory(input)
                       setEditingPos(false)
@@ -154,16 +203,34 @@ export function CategoryCard({
                 </div>
               ) : (
                 <>
-                  <p className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-ink-muted">
-                    <span className="inline-flex items-center gap-1.5">
-                      <span className="size-2 rounded-full bg-primary" aria-hidden />
-                      Dibayar <strong className="font-semibold text-ink tabular">{formatRupiah(paid)}</strong>
-                    </span>
-                    <span className="inline-flex items-center gap-1.5">
-                      <span className="size-2 rounded-full bg-gold" aria-hidden />
-                      Belum dibayar <strong className="font-semibold text-ink tabular">{formatRupiah(pending)}</strong>
-                    </span>
-                  </p>
+                  <dl className="grid grid-cols-3 gap-2 rounded-xl bg-surface-muted/60 p-2.5 text-xs sm:p-3">
+                    <div>
+                      <dt className="text-ink-muted">Anggaran</dt>
+                      <dd className="font-num text-sm font-semibold text-ink sm:text-base">{formatRupiah(planned)}</dd>
+                    </div>
+                    <div>
+                      <dt className="flex items-center gap-1.5 text-ink-muted">
+                        <span className="size-2 rounded-full bg-primary" aria-hidden />
+                        Aktual dibayar
+                      </dt>
+                      <dd className="font-num text-sm font-semibold text-ink sm:text-base">{formatRupiah(paid)}</dd>
+                    </div>
+                    <div>
+                      <dt className="flex items-center gap-1.5 text-ink-muted">
+                        <span className="size-2 rounded-full bg-gold" aria-hidden />
+                        Belum dibayar
+                      </dt>
+                      <dd className="font-num text-sm font-semibold text-ink sm:text-base">{formatRupiah(pending)}</dd>
+                    </div>
+                  </dl>
+                  {itemSavings !== 0 && (
+                    <p className={cn('mt-2 flex items-center gap-1.5 text-xs font-semibold', itemSavings > 0 ? 'text-success' : 'text-danger')}>
+                      {itemSavings > 0 ? <TrendingDown className="size-3.5" aria-hidden /> : <TrendingUp className="size-3.5" aria-hidden />}
+                      {itemSavings > 0
+                        ? `Bayar lebih murah ${formatRupiah(itemSavings)} dari harga rencana`
+                        : `Bayar lebih mahal ${formatRupiah(-itemSavings)} dari harga rencana`}
+                    </p>
+                  )}
 
                   {category.notes && (
                     <p className="mt-2 flex items-start gap-2 rounded-lg bg-surface-muted/60 px-3 py-2 text-sm text-ink-muted">
@@ -195,7 +262,10 @@ export function CategoryCard({
                             item={item}
                             expanded={expandedItem === item.id}
                             onToggleExpand={() => setExpandedItem((cur) => (cur === item.id ? null : item.id))}
-                            onTogglePaid={() => void onUpdateItem(item.id, { status: item.status === 'paid' ? 'planned' : 'paid' })}
+                            onMarkPaid={(actual, date) =>
+                              onUpdateItem(item.id, { status: 'paid', expense_date: date, ...actualPatch(item, item.amount, actual) })
+                            }
+                            onMarkUnpaid={() => void onUpdateItem(item.id, { status: 'planned' })}
                             onEdit={() => setEditingItem(item.id)}
                             onDelete={() => onAskDeleteItem(item)}
                             onAddPhoto={async (file) => saveItem(item, { proof_path: await uploadPhoto(file) })}
@@ -251,23 +321,28 @@ type ItemRowProps = {
   item: Expense
   expanded: boolean
   onToggleExpand: () => void
-  onTogglePaid: () => void
+  /** Tandai lunas dengan nominal aktual & tanggal bayar. */
+  onMarkPaid: (actual: number, date: string) => Promise<void>
+  onMarkUnpaid: () => void
   onEdit: () => void
   onDelete: () => void
   onAddPhoto: (file: File) => Promise<void>
 }
 
 /** Baris ringkas: centang · foto kecil · nama + harga. Ketuk untuk melihat foto, link, catatan, dan aksi. */
-function ItemRow({ item, expanded, onToggleExpand, onTogglePaid, onEdit, onDelete, onAddPhoto }: ItemRowProps) {
+function ItemRow({ item, expanded, onToggleExpand, onMarkPaid, onMarkUnpaid, onEdit, onDelete, onAddPhoto }: ItemRowProps) {
   const isPaid = item.status === 'paid'
   const cancelled = item.status === 'cancelled'
   const photoUrl = usePhotoUrl(item.proof_path)
   const [lightbox, setLightbox] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [photoError, setPhotoError] = useState<string | null>(null)
+  const [paying, setPaying] = useState(false)
   const { isPremium } = usePremium()
   const detailId = useId()
   const preview = item.link_url ? linkPreview(item.link_url) : null
+  const value = expenseValue(item)
+  const diff = isPaid ? item.amount - value : 0
 
   return (
     <li>
@@ -277,7 +352,8 @@ function ItemRow({ item, expanded, onToggleExpand, onTogglePaid, onEdit, onDelet
           role="checkbox"
           aria-checked={isPaid}
           aria-label={`${item.title} sudah dibayar`}
-          onClick={onTogglePaid}
+          aria-expanded={isPaid ? undefined : paying}
+          onClick={() => (isPaid ? onMarkUnpaid() : setPaying((v) => !v))}
           disabled={cancelled}
           className="-ml-2.5 flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-xl transition-colors hover:bg-surface-muted disabled:cursor-not-allowed"
         >
@@ -305,7 +381,10 @@ function ItemRow({ item, expanded, onToggleExpand, onTogglePaid, onEdit, onDelet
             </span>
             <span className="flex items-center gap-2 text-xs text-ink-subtle">
               {isPaid ? (
-                <span className="text-success">Lunas{item.expense_date && ` · ${formatDateShort(item.expense_date)}`}</span>
+                <span className="text-success">
+                  Lunas{item.expense_date && ` · ${formatDateShort(item.expense_date)}`}
+                  {diff > 0 && ` · hemat ${formatRupiahShort(diff)}`}
+                </span>
               ) : cancelled ? (
                 <span>Batal</span>
               ) : (
@@ -316,12 +395,30 @@ function ItemRow({ item, expanded, onToggleExpand, onTogglePaid, onEdit, onDelet
               {item.proof_path && !photoUrl && <ImageIcon className="size-3.5" aria-label="ada foto" />}
             </span>
           </span>
-          <span className={cn('shrink-0 text-right text-[0.95rem] font-semibold tabular', isPaid ? 'text-ink-muted' : 'text-ink')}>
-            {item.amount > 0 ? formatRupiah(item.amount) : <span className="text-xs font-normal text-ink-subtle">Harga?</span>}
+          <span className="block shrink-0 text-right leading-tight">
+            <span className="block text-[0.95rem] font-semibold text-ink tabular">
+              {value > 0 ? formatRupiah(value) : <span className="text-xs font-normal text-ink-subtle">Harga?</span>}
+            </span>
+            {diff !== 0 && (
+              <span className={cn('block text-[0.7rem] tabular', diff > 0 ? 'text-ink-subtle' : 'text-danger')}>
+                rencana <span className="line-through">{formatRupiahShort(item.amount)}</span>
+              </span>
+            )}
           </span>
           <ChevronDown className={cn('size-4 shrink-0 text-ink-subtle transition-transform', expanded && 'rotate-180')} aria-hidden />
         </button>
       </div>
+
+      {paying && !isPaid && (
+        <PayPanel
+          item={item}
+          onCancel={() => setPaying(false)}
+          onConfirm={async (actual, date) => {
+            await onMarkPaid(actual, date)
+            setPaying(false)
+          }}
+        />
+      )}
 
       {expanded && (
         <div id={detailId} className="animate-fade-up space-y-2.5 pb-3 pl-8 sm:pl-9">
@@ -422,6 +519,68 @@ function ItemRow({ item, expanded, onToggleExpand, onTogglePaid, onEdit, onDelet
 
       {lightbox && photoUrl && <PhotoLightbox src={photoUrl} alt={`Foto ${item.title}`} onClose={() => setLightbox(false)} />}
     </li>
+  )
+}
+
+/**
+ * Catat pembayaran saat item dicentang: nominal aktual (default = harga rencana) + tanggal.
+ * Satu ketukan "Tandai lunas" bila harganya sama.
+ */
+function PayPanel({ item, onCancel, onConfirm }: { item: Expense; onCancel: () => void; onConfirm: (actual: number, date: string) => Promise<void> }) {
+  const [actual, setActual] = useState<number | null>(item.actual_amount ?? item.amount)
+  const [date, setDate] = useState(() => toDateOnly(new Date()))
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const diff = item.amount - (actual ?? 0)
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    if (actual == null) {
+      setError('Isi nominal yang dibayar.')
+      return
+    }
+    setBusy(true)
+    setError(null)
+    try {
+      await onConfirm(actual, date || toDateOnly(new Date()))
+    } catch {
+      setError('Gagal menyimpan. Periksa koneksi lalu coba lagi.')
+      setBusy(false)
+    }
+  }
+
+  return (
+    <form
+      onSubmit={submit}
+      noValidate
+      aria-label={`Catat pembayaran ${item.title}`}
+      className="animate-fade-up mb-3 ml-8 rounded-xl border border-success/30 bg-success-soft/40 p-3 sm:ml-9"
+    >
+      <p className="text-sm font-semibold text-ink">Berapa yang benar-benar dibayar?</p>
+      <div className="mt-2 grid gap-3 sm:grid-cols-[minmax(0,1fr)_10.5rem]">
+        <MoneyField label="Dibayar (aktual)" value={actual} onChange={setActual} error={error ?? undefined} autoFocus />
+        <TextField label="Tanggal bayar" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+      </div>
+      {actual != null && item.amount > 0 && diff !== 0 && (
+        <p className={cn('mt-2 flex items-center gap-1.5 text-sm font-semibold tabular', diff > 0 ? 'text-success' : 'text-danger')}>
+          {diff > 0 ? <TrendingDown className="size-4" aria-hidden /> : <TrendingUp className="size-4" aria-hidden />}
+          {diff > 0 ? `Hemat ${formatRupiah(diff)} dari harga rencana` : `Lebih ${formatRupiah(-diff)} dari harga rencana`}
+        </p>
+      )}
+      <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+        {item.amount > 0 && actual !== item.amount && (
+          <button type="button" onClick={() => setActual(item.amount)} className="mr-auto min-h-10 cursor-pointer text-sm font-semibold text-primary hover:underline">
+            Sesuai harga ({formatRupiahShort(item.amount)})
+          </button>
+        )}
+        <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={busy} className="h-10">
+          Batal
+        </Button>
+        <Button type="submit" size="sm" loading={busy} icon={<Check className="size-4" aria-hidden />} className="h-10">
+          Tandai lunas
+        </Button>
+      </div>
+    </form>
   )
 }
 

@@ -6,6 +6,9 @@ import { FREE_GUEST_LIMIT } from '@/lib/plans'
 import { normalizeGuest } from '@/lib/guests'
 import {
   addDemoCategory,
+  addDemoEvent,
+  deleteDemoEvent,
+  updateDemoEvent,
   addDemoExpense,
   addDemoGuest,
   addDemoRundownItem,
@@ -26,6 +29,7 @@ import {
 } from '@/lib/demoStore'
 import type {
   BudgetCategory,
+  BudgetEvent,
   Expense,
   Guest,
   Payment,
@@ -48,6 +52,10 @@ export class GuestLimitError extends Error {
 // 1. BUDGET HOOK
 // ---------------------------------------------------------------------------
 export type BudgetData = {
+  /** Acara (Lamaran, Prewedding, ...). Kosong bila migration 000012 belum dijalankan. */
+  events: BudgetEvent[]
+  /** false = tabel budget_events belum ada di database. */
+  eventsReady: boolean
   categories: BudgetCategory[]
   expenses: Expense[]
   payments: Payment[]
@@ -58,6 +66,8 @@ export type BudgetData = {
 export type ExpenseInput = {
   title: string
   amount: number
+  /** Nominal yang benar-benar dibayar (null = sama dengan harga). */
+  actual_amount?: number | null
   status?: Expense['status']
   expense_date?: string | null
   link_url?: string | null
@@ -66,7 +76,9 @@ export type ExpenseInput = {
   proof_path?: string | null
 }
 
-export type CategoryInput = { name: string; planned_amount: number; notes?: string | null; is_reserve?: boolean }
+export type CategoryInput = { name: string; planned_amount: number; notes?: string | null; is_reserve?: boolean; event_id?: string | null }
+
+export type EventInput = { name: string; icon: string; event_date?: string | null }
 
 const todayStr = () => toDateOnly(new Date())
 
@@ -76,19 +88,21 @@ export function useBudgetData(weddingId: string) {
   const load = useCallback(async () => {
     const demo = getCurrentDemoAccount()
     if (demo) {
-      const { categories, expenses, payments } = getDemoBudget(demo.id)
-      setState({ status: 'ready', data: { categories, expenses, payments, vendors: getDemoVendors(demo.id) } })
+      const { events, categories, expenses, payments } = getDemoBudget(demo.id)
+      setState({ status: 'ready', data: { events, eventsReady: true, categories, expenses, payments, vendors: getDemoVendors(demo.id) } })
       return
     }
 
     const client = db()
-    const [cats, exps, pays, vends] = await Promise.all([
+    const [evs, cats, exps, pays, vends] = await Promise.all([
+      client.from('budget_events').select('*').eq('wedding_id', weddingId).order('sort_order'),
       client.from('budget_categories').select('*').eq('wedding_id', weddingId).order('sort_order'),
       client.from('expenses').select('*').eq('wedding_id', weddingId).order('expense_date', { ascending: false }),
       client.from('payments').select('*').eq('wedding_id', weddingId).order('due_date', { ascending: true }),
       client.from('wedding_vendors').select('*').eq('wedding_id', weddingId),
     ])
 
+    // Acara opsional: tanpa migration 000012 halaman tetap jalan, pos tampil tanpa pengelompokan.
     if (cats.error || exps.error || pays.error || vends.error) {
       setState({ status: 'error' })
       return
@@ -97,6 +111,8 @@ export function useBudgetData(weddingId: string) {
     setState({
       status: 'ready',
       data: {
+        events: evs.error ? [] : (evs.data ?? []),
+        eventsReady: !evs.error,
         categories: cats.data ?? [],
         expenses: exps.data ?? [],
         payments: pays.data ?? [],
@@ -121,6 +137,8 @@ export function useBudgetData(weddingId: string) {
         category_id: input.category_id,
         title: input.title,
         amount: input.amount,
+        // Hanya dikirim bila ada, agar tetap bisa menyimpan sebelum migration 000012 dijalankan.
+        ...(input.actual_amount != null && { actual_amount: input.actual_amount }),
         status: input.status ?? 'planned',
         expense_date: input.status === 'paid' ? (input.expense_date ?? todayStr()) : (input.expense_date ?? null),
         link_url: input.link_url ?? null,
@@ -192,10 +210,11 @@ export function useBudgetData(weddingId: string) {
         notes: input.notes ?? null,
         is_reserve: Boolean(input.is_reserve),
         sort_order: nextOrder,
+        ...(input.event_id && { event_id: input.event_id }),
       }
       const demo = getCurrentDemoAccount()
       if (demo) {
-        const cat = addDemoCategory(demo.id, { ...row, is_archived: false, template_key: null })
+        const cat = addDemoCategory(demo.id, { event_id: null, ...row, is_archived: false, template_key: null })
         void load()
         return cat.id
       }
@@ -240,7 +259,77 @@ export function useBudgetData(weddingId: string) {
     [load],
   )
 
-  return { state, reload: load, createExpense, updateExpense, deleteExpense, createCategory, updateCategory, deleteCategory }
+  /** Acara baru diletakkan paling akhir; mengembalikan id agar halaman bisa langsung memilihnya. */
+  const createEvent = useCallback(
+    async (input: EventInput): Promise<string> => {
+      const nextOrder = state.status === 'ready' ? Math.max(0, ...state.data.events.map((e) => e.sort_order)) + 1 : 1
+      const row = { wedding_id: weddingId, name: input.name, icon: input.icon, event_date: input.event_date ?? null, sort_order: nextOrder }
+      const demo = getCurrentDemoAccount()
+      if (demo) {
+        const ev = addDemoEvent(demo.id, { ...row, template_key: null })
+        void load()
+        return ev.id
+      }
+      const { data, error } = await db().from('budget_events').insert(row).select('id').single()
+      if (error) throw error
+      await load()
+      return data.id
+    },
+    [weddingId, state, load],
+  )
+
+  const updateEvent = useCallback(
+    async (id: string, input: Partial<EventInput>) => {
+      patchLocal((d) => ({ ...d, events: d.events.map((e) => (e.id === id ? { ...e, ...input } : e)) }))
+      const demo = getCurrentDemoAccount()
+      if (demo) {
+        updateDemoEvent(demo.id, id, input)
+        return
+      }
+      const { error } = await db().from('budget_events').update(input).eq('id', id)
+      if (error) {
+        void load()
+        throw error
+      }
+    },
+    [patchLocal, load],
+  )
+
+  /** Hapus acara; pos di dalamnya tetap ada sebagai "tanpa acara" (FK ON DELETE SET NULL). */
+  const deleteEvent = useCallback(
+    async (id: string) => {
+      patchLocal((d) => ({
+        ...d,
+        events: d.events.filter((e) => e.id !== id),
+        categories: d.categories.map((c) => (c.event_id === id ? { ...c, event_id: null } : c)),
+      }))
+      const demo = getCurrentDemoAccount()
+      if (demo) {
+        deleteDemoEvent(demo.id, id)
+        return
+      }
+      const { error } = await db().from('budget_events').delete().eq('id', id)
+      if (error) {
+        void load()
+        throw error
+      }
+    },
+    [patchLocal, load],
+  )
+
+  return {
+    state,
+    reload: load,
+    createExpense,
+    updateExpense,
+    deleteExpense,
+    createCategory,
+    updateCategory,
+    deleteCategory,
+    createEvent,
+    updateEvent,
+    deleteEvent,
+  }
 }
 
 // ---------------------------------------------------------------------------

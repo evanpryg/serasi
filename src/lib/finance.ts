@@ -16,7 +16,7 @@ import { daysBetween, parseDateOnly } from './format'
 export type FinanceInput = {
   wedding: Pick<Wedding, 'budget_target' | 'available_funds'>
   categories: Pick<BudgetCategory, 'id' | 'name' | 'planned_amount' | 'is_archived' | 'is_reserve'>[]
-  expenses: Pick<Expense, 'category_id' | 'amount' | 'status'>[]
+  expenses: Pick<Expense, 'category_id' | 'amount' | 'status' | 'actual_amount'>[]
   vendors: Pick<WeddingVendor, 'id' | 'category_id' | 'status' | 'contract_amount'>[]
   payments: Pick<Payment, 'id' | 'wedding_vendor_id' | 'amount' | 'status' | 'due_date'>[]
 }
@@ -61,6 +61,14 @@ export type FinanceSummary = {
 
 const sum = (values: number[]) => values.reduce((acc, v) => acc + v, 0)
 
+/**
+ * Nominal yang dihitung untuk satu item: item lunas memakai realisasi (`actual_amount`)
+ * bila diisi, selain itu harga rencana (`amount`).
+ */
+export function expenseValue(e: Pick<Expense, 'amount' | 'status' | 'actual_amount'>): number {
+  return e.status === 'paid' && e.actual_amount != null ? e.actual_amount : e.amount
+}
+
 export function calculateFinance(input: FinanceInput): FinanceSummary {
   const { wedding, categories, expenses, vendors, payments } = input
   const activeCategories = categories.filter((c) => !c.is_archived)
@@ -95,7 +103,7 @@ export function calculateFinance(input: FinanceInput): FinanceSummary {
   const unlinkedScheduled = sum(payments.filter((p) => p.status === 'scheduled' && !p.wedding_vendor_id).map((p) => p.amount))
   const outstandingBills = vendorBills + unlinkedScheduled
 
-  const actualSpent = sum(paidExpenses.map((e) => e.amount)) + sum(paidPayments.map((p) => p.amount))
+  const actualSpent = sum(paidExpenses.map(expenseValue)) + sum(paidPayments.map((p) => p.amount))
   const plannedExpenses = sum(plannedExpenseRows.map((e) => e.amount))
   const totalBudget = sum(activeCategories.map((c) => c.planned_amount))
   const cashOnHand = wedding.available_funds - actualSpent
@@ -104,7 +112,7 @@ export function calculateFinance(input: FinanceInput): FinanceSummary {
     const catVendors = vendors.filter((v) => v.category_id === c.id)
     const catVendorIds = new Set(catVendors.map((v) => v.id))
     const actual =
-      sum(paidExpenses.filter((e) => e.category_id === c.id).map((e) => e.amount)) +
+      sum(paidExpenses.filter((e) => e.category_id === c.id).map(expenseValue)) +
       sum(paidPayments.filter((p) => p.wedding_vendor_id && catVendorIds.has(p.wedding_vendor_id)).map((p) => p.amount))
     const committed =
       actual +

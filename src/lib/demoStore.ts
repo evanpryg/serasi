@@ -1,5 +1,6 @@
 import type {
   BudgetCategory,
+  BudgetEvent,
   DeepTalkAnswer,
   Expense,
   Guest,
@@ -68,19 +69,78 @@ export function updateDemoWedding(demoId: DemoAccountId, updates: Partial<Weddin
 // 2. BUDGET (Categories, Expenses, Payments)
 // ---------------------------------------------------------------------------
 type BudgetStore = {
+  events: BudgetEvent[]
   categories: BudgetCategory[]
   expenses: Expense[]
   payments: Payment[]
 }
 
+/** Sama dengan seed_budget_events di database (migration 000012). */
+function seedDemoEvents(demoId: DemoAccountId): BudgetEvent[] {
+  const weddingId = DEMO_ACCOUNTS[demoId]?.wedding.id ?? demoId
+  const at = '2026-10-13T00:00:00Z'
+  return (
+    [
+      ['lamaran', 'Lamaran', 'heart-handshake'],
+      ['prewedding', 'Prewedding', 'camera'],
+      ['wedding', 'Wedding', 'gem'],
+      ['honeymoon', 'Honeymoon', 'plane'],
+    ] as const
+  ).map(([key, name, icon], i) => ({
+    id: `ev_${demoId}_${key}`,
+    wedding_id: weddingId,
+    name,
+    icon,
+    event_date: null,
+    sort_order: i + 1,
+    template_key: key,
+    created_at: at,
+    updated_at: at,
+  }))
+}
+
 export function getDemoBudget(demoId: DemoAccountId): BudgetStore {
   const account = DEMO_ACCOUNTS[demoId]
-  const initial: BudgetStore = {
+  const initial = {
     categories: account?.categories ?? [],
     expenses: account?.expenses ?? [],
     payments: account?.payments ?? [],
   }
-  return getStored<BudgetStore>(keyBudget(demoId), initial)
+  const stored = getStored<Partial<BudgetStore>>(keyBudget(demoId), initial)
+  // Data demo lama (sebelum ada acara): buat acara bawaan, pos lama masuk "Wedding" — seperti migration.
+  if (stored.events) return stored as BudgetStore
+  const events = seedDemoEvents(demoId)
+  const weddingEvent = events.find((e) => e.template_key === 'wedding')!.id
+  return {
+    events,
+    categories: (stored.categories ?? []).map((c) => ({ ...c, event_id: c.event_id ?? weddingEvent })),
+    expenses: stored.expenses ?? [],
+    payments: stored.payments ?? [],
+  }
+}
+
+export function addDemoEvent(demoId: DemoAccountId, ev: Omit<BudgetEvent, 'id' | 'created_at' | 'updated_at'>): BudgetEvent {
+  const current = getDemoBudget(demoId)
+  const now = new Date().toISOString()
+  const row: BudgetEvent = { ...ev, id: `ev_demo_${Date.now()}`, created_at: now, updated_at: now }
+  saveDemoBudget(demoId, { ...current, events: [...current.events, row] })
+  return row
+}
+
+export function updateDemoEvent(demoId: DemoAccountId, id: string, updates: Partial<BudgetEvent>): void {
+  const current = getDemoBudget(demoId)
+  const now = new Date().toISOString()
+  saveDemoBudget(demoId, { ...current, events: current.events.map((e) => (e.id === id ? { ...e, ...updates, updated_at: now } : e)) })
+}
+
+/** Hapus acara; pos di dalamnya tetap ada tanpa acara (sama dengan ON DELETE SET NULL). */
+export function deleteDemoEvent(demoId: DemoAccountId, id: string): void {
+  const current = getDemoBudget(demoId)
+  saveDemoBudget(demoId, {
+    ...current,
+    events: current.events.filter((e) => e.id !== id),
+    categories: current.categories.map((c) => (c.event_id === id ? { ...c, event_id: null } : c)),
+  })
 }
 
 export function saveDemoBudget(demoId: DemoAccountId, store: BudgetStore): void {
@@ -440,6 +500,7 @@ export function getDynamicDemoDashboardData(demoId: DemoAccountId): DashboardDat
     expenses: budget.expenses.map((e) => ({
       category_id: e.category_id,
       amount: e.amount,
+      actual_amount: e.actual_amount ?? null,
       status: e.status,
     })),
     vendors: vendors.map((v) => ({
