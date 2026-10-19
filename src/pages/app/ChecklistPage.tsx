@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, Check, ChevronRight, ListChecks, Plus, RotateCcw, StickyNote } from 'lucide-react'
+import { AlertTriangle, CalendarClock, Check, ChevronRight, ListChecks, Plus, RotateCcw, StickyNote } from 'lucide-react'
 import { useSearchParams } from 'react-router'
 import { useWedding } from '@/auth/WorkspaceProvider'
 import { useChecklistData } from '@/hooks/usePlanningData'
@@ -27,6 +27,52 @@ function daysLeft(task: ChecklistItem): number | null {
 
 function eventOf(task: ChecklistItem): ChecklistEventKey {
   return (task.event as ChecklistEventKey) || 'pernikahan'
+}
+
+type View = 'prioritas' | 'kategori'
+const VIEW_KEY = 'serasi:checklist-view'
+
+function loadView(): View {
+  try {
+    return localStorage.getItem(VIEW_KEY) === 'kategori' ? 'kategori' : 'prioritas'
+  } catch {
+    return 'prioritas'
+  }
+}
+
+type Urgency = 'late' | 'week' | 'month' | 'later' | 'none' | 'done'
+
+/** Kelompok tampilan Prioritas, dari yang paling mendesak. Warna selalu disertai teks. */
+const URGENCY: Record<Urgency, { label: string; hint: string; dot: string; text: string }> = {
+  late: { label: 'Lewat tenggat', hint: 'Kerjakan dulu', dot: 'bg-danger', text: 'text-danger' },
+  week: { label: '7 hari ke depan', hint: 'Mendesak', dot: 'bg-warning', text: 'text-warning' },
+  month: { label: '30 hari ke depan', hint: 'Segera', dot: 'bg-primary', text: 'text-primary' },
+  later: { label: 'Nanti', hint: 'Lebih dari sebulan lagi', dot: 'bg-ink-subtle', text: 'text-ink-subtle' },
+  none: { label: 'Belum ada tenggat', hint: 'Ketuk tugas untuk mengatur tenggat', dot: 'bg-border-strong', text: 'text-ink-subtle' },
+  done: { label: 'Sudah beres', hint: '', dot: 'bg-success', text: 'text-success' },
+}
+const URGENCY_ORDER = Object.keys(URGENCY) as Urgency[]
+const PRIORITY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 }
+
+function urgencyOf(task: ChecklistItem): Urgency {
+  if (task.status === 'done') return 'done'
+  const left = daysLeft(task)
+  if (left == null) return 'none'
+  if (left < 0) return 'late'
+  if (left <= 7) return 'week'
+  if (left <= 30) return 'month'
+  return 'later'
+}
+
+/** Kelompokkan per tingkat urgensi; di dalamnya urut tenggat terdekat, lalu prioritas bawaan tugas. */
+function groupByUrgency(tasks: ChecklistItem[]) {
+  const sorted = [...tasks].sort(
+    (a, b) =>
+      (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999') ||
+      (PRIORITY_RANK[a.priority] ?? 1) - (PRIORITY_RANK[b.priority] ?? 1) ||
+      a.sort_order - b.sort_order,
+  )
+  return URGENCY_ORDER.map((u) => [u, sorted.filter((t) => urgencyOf(t) === u)] as const).filter(([, items]) => items.length > 0)
 }
 
 /** Kelompokkan per kategori, urutan sesuai template (tugas tambahan di paling atas). */
@@ -76,7 +122,9 @@ export function ChecklistPage() {
 
   const [showDone, setShowDone] = useState(false)
   const [lateOnly, setLateOnly] = useState(false)
+  const [view, setView] = useState<View>(loadView)
   const [newTitle, setNewTitle] = useState('')
+  const [newDue, setNewDue] = useState('')
   const [adding, setAdding] = useState(false)
   const [addError, setAddError] = useState<string | null>(null)
   const [editing, setEditing] = useState<ChecklistItem | null>(null)
@@ -106,7 +154,19 @@ export function ChecklistPage() {
   const scope = lateOnly ? tasks.filter(late) : tasks.filter((t) => eventOf(t) === eventTab)
   const visible = showDone || lateOnly ? scope : scope.filter((t) => t.status !== 'done')
   const doneHidden = lateOnly ? 0 : scope.length - visible.length
-  const groups = groupByCategory(visible)
+  const byPriority = view === 'prioritas' && !lateOnly
+  const groups = byPriority ? [] : groupByCategory(visible)
+  const urgencyGroups = byPriority ? groupByUrgency(visible) : []
+  const groupCount = byPriority ? urgencyGroups.length : groups.length
+
+  function changeView(next: View) {
+    setView(next)
+    try {
+      localStorage.setItem(VIEW_KEY, next)
+    } catch {
+      /* preferensi tampilan saja */
+    }
+  }
 
   async function quickAdd(e: React.FormEvent) {
     e.preventDefault()
@@ -118,8 +178,9 @@ export function ChecklistPage() {
     setAdding(true)
     setAddError(null)
     try {
-      await createTask({ title, event: eventTab, category: CUSTOM_CATEGORY })
+      await createTask({ title, event: eventTab, category: CUSTOM_CATEGORY, due_date: newDue || null })
       setNewTitle('')
+      setNewDue('')
       addRef.current?.focus()
     } catch {
       setAddError('Tugas gagal ditambahkan. Periksa koneksi lalu coba lagi.')
@@ -130,7 +191,7 @@ export function ChecklistPage() {
 
   return (
     <div className="space-y-5 lg:space-y-6">
-      <PageHeader title="Checklist" description="Centang yang sudah beres. Ketuk tugas untuk memberi tanggal atau catatan." />
+      <PageHeader title="Checklist" description="Centang yang sudah beres. Ketuk tugas untuk mengatur tenggat atau catatan; yang tenggatnya paling dekat tampil paling atas." />
 
       {/* Progres: satu angka + bar */}
       <Card className="p-4 sm:p-5">
@@ -210,7 +271,7 @@ export function ChecklistPage() {
           {!lateOnly && (
             <>
               {/* Tambah cepat: ketik lalu Enter */}
-              <form onSubmit={quickAdd} className="flex gap-2">
+              <form onSubmit={quickAdd} className="flex flex-wrap gap-2 sm:flex-nowrap">
                 <label htmlFor="quick-task" className="sr-only">
                   Tambah tugas di {CHECKLIST_EVENTS[eventTab].shortTitle}
                 </label>
@@ -221,8 +282,18 @@ export function ChecklistPage() {
                   onChange={(e) => setNewTitle(e.target.value)}
                   placeholder={`Tambah tugas di ${CHECKLIST_EVENTS[eventTab].shortTitle}…`}
                   maxLength={160}
-                  className="h-11 min-w-0 flex-1 rounded-xl border border-border bg-surface px-3.5 text-[0.95rem] text-ink placeholder:text-ink-subtle focus:border-primary focus:outline-none focus:ring-3 focus:ring-primary/15"
+                  className="h-11 min-w-0 flex-[1_1_100%] rounded-xl border border-border bg-surface px-3.5 text-[0.95rem] text-ink placeholder:text-ink-subtle focus:border-primary focus:outline-none focus:ring-3 focus:ring-primary/15 sm:flex-1"
                 />
+                <label className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-xl border border-border bg-surface pl-3 pr-2 text-ink-muted focus-within:border-primary focus-within:ring-3 focus-within:ring-primary/15 sm:w-48 sm:flex-none">
+                  <CalendarClock className="size-4 shrink-0" aria-hidden />
+                  <span className="sr-only">Tenggat (opsional)</span>
+                  <input
+                    type="date"
+                    value={newDue}
+                    onChange={(e) => setNewDue(e.target.value)}
+                    className={cn('h-full min-w-0 flex-1 bg-transparent text-[0.95rem] focus:outline-none', newDue ? 'text-ink' : 'text-ink-subtle')}
+                  />
+                </label>
                 <Button type="submit" loading={adding} aria-label="Tambah tugas" className="w-11 px-0!">
                   {!adding && <Plus className="size-5" aria-hidden />}
                 </Button>
@@ -235,12 +306,64 @@ export function ChecklistPage() {
             </>
           )}
 
-          {groups.length === 0 ? (
+          {!lateOnly && (
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div role="group" aria-label="Urutkan tugas" className="inline-flex rounded-xl bg-surface-muted p-1">
+                {(
+                  [
+                    ['prioritas', 'Prioritas'],
+                    ['kategori', 'Kategori'],
+                  ] as const
+                ).map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    aria-pressed={view === key}
+                    onClick={() => changeView(key)}
+                    className={cn(
+                      'min-h-9 cursor-pointer rounded-lg px-3.5 text-sm font-semibold transition-colors',
+                      view === key ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted hover:text-ink',
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-ink-subtle">{view === 'prioritas' ? 'Diurutkan dari tenggat terdekat' : 'Dikelompokkan per jenis persiapan'}</p>
+            </div>
+          )}
+
+          {groupCount === 0 ? (
             <EmptyState
               icon={<ListChecks className="size-7" aria-hidden />}
               title={scope.length > 0 ? 'Semua sudah beres' : 'Belum ada tugas di sini'}
               description={scope.length > 0 ? 'Mantap! Bagian ini sudah selesai semua.' : 'Ketik tugas di kolom atas lalu tekan Enter.'}
             />
+          ) : byPriority ? (
+            <div className="space-y-4">
+              {urgencyGroups.map(([u, items]) => {
+                const meta = URGENCY[u]
+                return (
+                  <section key={u} aria-label={meta.label}>
+                    <h2 className="mb-1.5 flex items-baseline justify-between gap-3 px-1">
+                      <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-ink">
+                        <span className={cn('size-2 shrink-0 self-center rounded-full', meta.dot)} aria-hidden />
+                        {meta.label}
+                        <span className="font-medium normal-case tracking-normal text-ink-subtle tabular">{items.length}</span>
+                      </span>
+                      {meta.hint && <span className={cn('truncate text-xs font-medium', meta.text)}>{meta.hint}</span>}
+                    </h2>
+                    <Card className={cn('overflow-hidden', u === 'late' && 'border-danger/30')}>
+                      <ul className="divide-y divide-border">
+                        {items.map((item) => (
+                          <TaskRow key={item.id} item={item} context={item.category || undefined} onToggle={() => void toggleTask(item.id)} onOpen={() => setEditing(item)} />
+                        ))}
+                      </ul>
+                    </Card>
+                  </section>
+                )
+              })}
+            </div>
           ) : (
             <div className="space-y-4">
               {groups.map(([name, items]) => {
@@ -259,7 +382,13 @@ export function ChecklistPage() {
                     <Card className="overflow-hidden">
                       <ul className="divide-y divide-border">
                         {items.map((item) => (
-                          <TaskRow key={item.id} item={item} showEvent={lateOnly} onToggle={() => void toggleTask(item.id)} onOpen={() => setEditing(item)} />
+                          <TaskRow
+                            key={item.id}
+                            item={item}
+                            context={lateOnly ? CHECKLIST_EVENTS[eventOf(item)].shortTitle : undefined}
+                            onToggle={() => void toggleTask(item.id)}
+                            onOpen={() => setEditing(item)}
+                          />
                         ))}
                       </ul>
                     </Card>
@@ -325,7 +454,7 @@ export function ChecklistPage() {
 // ---------------------------------------------------------------------------
 // Baris tugas: centang · judul (+ tanggal) · buka detail
 // ---------------------------------------------------------------------------
-function TaskRow({ item, showEvent, onToggle, onOpen }: { item: ChecklistItem; showEvent?: boolean; onToggle: () => void; onOpen: () => void }) {
+function TaskRow({ item, context, onToggle, onOpen }: { item: ChecklistItem; context?: string; onToggle: () => void; onOpen: () => void }) {
   const done = item.status === 'done'
   const left = daysLeft(item)
   const isLate = !done && left != null && left < 0
@@ -334,7 +463,7 @@ function TaskRow({ item, showEvent, onToggle, onOpen }: { item: ChecklistItem; s
 
   let dueText: string | null = null
   if (!done && item.due_date && left != null) {
-    dueText = isLate ? `Lewat ${-left} hari` : left === 0 ? 'Hari ini' : isSoon ? `${left} hari lagi` : formatDateShort(item.due_date)
+    dueText = isLate ? `Lewat ${-left} hari` : left === 0 ? 'Hari ini' : left === 1 ? 'Besok' : isSoon ? `${left} hari lagi` : formatDateShort(item.due_date)
   }
 
   return (
@@ -360,20 +489,29 @@ function TaskRow({ item, showEvent, onToggle, onOpen }: { item: ChecklistItem; s
       <button type="button" onClick={onOpen} className="flex min-h-12 min-w-0 flex-1 cursor-pointer items-center gap-2 py-2 text-left">
         <span className="block min-w-0 flex-1">
           <span className={cn('block text-[0.95rem] leading-snug', done ? 'text-ink-subtle line-through' : 'text-ink')}>{item.title}</span>
-          {(dueText || showEvent || note) && (
-            <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-ink-subtle">
+          {(dueText || context || note) && (
+            <span className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-ink-subtle">
               {dueText && (
-                <span className={cn('shrink-0 font-medium tabular', isLate ? 'text-danger' : isSoon ? 'text-warning' : 'text-ink-subtle')}>{dueText}</span>
+                <span
+                  className={cn(
+                    'inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 font-semibold tabular',
+                    isLate ? 'bg-danger-soft text-danger' : isSoon ? 'bg-warning-soft text-warning' : 'bg-surface-muted text-ink-muted',
+                  )}
+                >
+                  {isLate ? <AlertTriangle className="size-3" aria-hidden /> : <CalendarClock className="size-3" aria-hidden />}
+                  <span className="sr-only">Tenggat: </span>
+                  {dueText}
+                </span>
               )}
-              {showEvent && (
+              {context && (
                 <>
                   {dueText && <span aria-hidden>·</span>}
-                  <span className="shrink-0">{CHECKLIST_EVENTS[eventOf(item)].shortTitle}</span>
+                  <span className="truncate">{context}</span>
                 </>
               )}
               {note && (
                 <>
-                  {(dueText || showEvent) && <span aria-hidden>·</span>}
+                  {(dueText || context) && <span aria-hidden>·</span>}
                   <StickyNote className="size-3 shrink-0" aria-hidden />
                   <span className="truncate">{note}</span>
                 </>

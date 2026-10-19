@@ -4,14 +4,28 @@ import { Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { FieldShell, TextField, inputClass } from '@/components/ui/Field'
 import { cn } from '@/lib/cn'
+import { toDateOnly } from '@/lib/format'
 import { CHECKLIST_EVENTS, type ChecklistEventKey, type ChecklistItem } from '@/lib/checklistTypes'
 
 const EVENT_KEYS = Object.keys(CHECKLIST_EVENTS) as ChecklistEventKey[]
 
+/** Pilihan cepat tenggat, dihitung dari hari ini. */
+const DUE_PRESETS = [
+  { label: 'Minggu ini', days: 7 },
+  { label: 'Bulan ini', days: 30 },
+  { label: '3 bulan lagi', days: 90 },
+]
+
+function inDays(days: number) {
+  const d = new Date()
+  d.setDate(d.getDate() + days)
+  return toDateOnly(d)
+}
+
 export type TaskDraft = { title: string; due_date: string | null; notes: string | null; event: ChecklistEventKey }
 
 /**
- * Lembar bawah sederhana untuk satu tugas: nama, tanggal target, catatan, dan acara.
+ * Lembar bawah sederhana untuk satu tugas: nama, tenggat, catatan, dan acara.
  * Rincian administratif (biaya, jumlah, toko) sengaja tidak ditampilkan; belanja dicatat di Anggaran.
  */
 export function TaskSheet({
@@ -93,7 +107,44 @@ export function TaskSheet({
         <div className="space-y-4 px-5 pb-5">
           <TextField label="Tugas" value={title} onChange={(e) => setTitle(e.target.value)} error={error ?? undefined} maxLength={160} />
 
-          <TextField label="Target selesai" optional type="date" value={due} onChange={(e) => setDue(e.target.value)} />
+          <div className="space-y-2">
+            <TextField
+              label="Tenggat waktu"
+              optional
+              type="date"
+              value={due}
+              onChange={(e) => setDue(e.target.value)}
+              hint="Tugas dengan tenggat terdekat tampil paling atas di tampilan Prioritas."
+            />
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Pilihan cepat tenggat">
+              {DUE_PRESETS.map((p) => {
+                const value = inDays(p.days)
+                return (
+                  <button
+                    key={p.label}
+                    type="button"
+                    aria-pressed={due === value}
+                    onClick={() => setDue(value)}
+                    className={cn(
+                      'min-h-9 cursor-pointer rounded-full border px-3 text-sm font-medium transition-colors',
+                      due === value ? 'border-primary bg-primary-soft text-primary' : 'border-border text-ink-muted hover:border-border-strong hover:text-ink',
+                    )}
+                  >
+                    {p.label}
+                  </button>
+                )
+              })}
+              {due && (
+                <button
+                  type="button"
+                  onClick={() => setDue('')}
+                  className="min-h-9 cursor-pointer rounded-full px-3 text-sm font-medium text-ink-subtle transition-colors hover:bg-surface-muted hover:text-ink"
+                >
+                  Tanpa tenggat
+                </button>
+              )}
+            </div>
+          </div>
 
           <FieldShell id={notesId} label="Catatan" optional>
             <textarea

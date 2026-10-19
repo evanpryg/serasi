@@ -94,7 +94,7 @@ function AppShell() {
       {/* Sidebar desktop */}
       <aside
         className={cn(
-          'sticky top-0 hidden h-dvh flex-col overflow-y-auto border-r bg-surface/75 px-4 py-6 backdrop-blur-md lg:flex',
+          'sticky top-0 hidden h-dvh flex-col overflow-y-auto border-r [&>*]:shrink-0 bg-surface/75 px-4 py-6 backdrop-blur-md lg:flex',
           isPremium ? 'border-gold/40' : 'border-border',
         )}
       >

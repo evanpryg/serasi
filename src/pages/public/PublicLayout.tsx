@@ -40,7 +40,7 @@ export function PublicLayout() {
           scrolled || open ? 'border-b border-border bg-canvas/90 backdrop-blur' : 'border-b border-transparent',
         )}
       >
-        <div className="mx-auto flex h-[4.25rem] max-w-6xl items-center justify-between gap-6 px-4 sm:px-6">
+        <div className="mx-auto flex h-[4.25rem] max-w-[104rem] items-center justify-between gap-6 px-4 sm:px-6 lg:px-10 xl:px-16">
           <Logo />
           <nav aria-label="Navigasi publik" className="hidden md:block">
             <ul className="flex items-center gap-1">
@@ -124,7 +124,7 @@ export function PublicLayout() {
       </div>
 
       <footer className="border-t border-border bg-surface-muted/50">
-        <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr]">
+        <div className="mx-auto grid max-w-[104rem] gap-10 px-4 py-12 sm:px-6 lg:px-10 xl:px-16 md:grid-cols-[1.4fr_1fr_1fr]">
           <div>
             <Logo />
             <p className="mt-3 max-w-sm text-sm text-ink-muted">

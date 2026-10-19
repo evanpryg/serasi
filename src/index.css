@@ -11,8 +11,8 @@
  * Token "partner" selalu warna pasangan dari sudut pandang yang login.
  */
 @theme {
-  --font-sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
-  --font-display: 'Bodoni Moda', ui-serif, Georgia, serif;
+  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Fraunces', ui-serif, Georgia, serif;
 
   /* Warna tetap per peran — dipakai untuk label CPP/CPW apa pun tema yang aktif */
   --color-cpp: #1e3a6e;
@@ -124,8 +124,10 @@
 @utility font-display {
   font-family: var(--font-display);
   font-optical-sizing: auto;
+  /* SOFT melunakkan ujung serif: tetap anggun tapi lebih mudah dibaca daripada serif kontras tinggi. */
+  font-variation-settings: 'SOFT' 50, 'WONK' 0;
   font-variant-numeric: lining-nums;
-  letter-spacing: -0.005em;
+  letter-spacing: -0.015em;
 }
 
 /* Angka besar (rupiah, persen, hitungan): sans tegak, digit sama lebar, rapat */

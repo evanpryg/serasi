@@ -43,9 +43,10 @@ Status tidak pernah disampaikan hanya dengan warna — selalu ada ikon dan/atau 
 - Foto pengguna: privat (signed URL), fade-in + scale saat termuat; teks di atas foto selalu diberi gradien gelap.
 
 ## Tipografi
-- **Display:** Bodoni Moda (variabel, optical size) 500–700 — judul saja (hero, judul halaman/seksi). Kesan mewah editorial.
-- **Body/UI + angka:** Geist 400–700 — bersih, digit tegak sejajar.
-- **Angka besar** (rupiah, persen, hitungan) memakai utilitas `font-num` (Geist + tabular + lining + tracking rapat),
+- **Display:** Fraunces (variabel, optical size, SOFT 50) 500–700 — judul saja (hero, judul halaman/seksi). Hangat dan anggun,
+  kontras goresan sedang. Bodoni Moda diganti 2026-10-19 karena garis tipisnya sulit dibaca.
+- **Body/UI + angka:** Plus Jakarta Sans 400–700 (karya Tokotype, Indonesia) — ramah, sangat terbaca, digit tabular.
+- **Angka besar** (rupiah, persen, hitungan) memakai utilitas `font-num` (Plus Jakarta Sans + tabular + lining + tracking rapat),
   **bukan** font serif. Cormorant ditolak (2026-10-13): angka gaya lama (old-style) naik-turun dan terlihat jelek.
 - Body 16px, line-height 1.55. Teks minimum 12px untuk label kecil.
 - Angka rupiah kecil selalu `tabular` (tabular-nums + lining-nums).

@@ -71,14 +71,14 @@ function Hero() {
   return (
     <section ref={ref} className="relative overflow-hidden">
       <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[42rem] bg-[radial-gradient(55%_60%_at_75%_20%,var(--color-gold-soft),transparent_70%),radial-gradient(35%_40%_at_95%_70%,var(--color-partner-soft),transparent_70%)]" />
-      <div className="relative mx-auto grid grid-cols-1 max-w-6xl gap-14 px-4 pb-20 pt-8 sm:px-6 sm:pt-14 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-center lg:gap-12 lg:pb-28">
+      <div className="relative mx-auto grid grid-cols-1 max-w-[104rem] gap-14 px-4 pb-20 pt-8 sm:px-6 lg:px-10 xl:px-16 sm:pt-14 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-center lg:gap-12 lg:pb-28">
         <div>
           <m.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE_OUT }}>
             <Badge tone="gold" className="px-3 py-1 text-[0.8rem]">
               <Heart className="size-3.5 fill-gold-text/20" aria-hidden /> Wedding planner untuk calon pengantin Indonesia
             </Badge>
           </m.div>
-          <h1 className="mt-6 font-display text-[3.2rem] font-semibold leading-[1.02] text-ink sm:text-[4.4rem]">
+          <h1 className="mt-6 font-display text-[3.2rem] font-semibold leading-[1.04] text-ink sm:text-[4.4rem] xl:text-[5.25rem]">
             <span className="sr-only">{HEADLINE.join(' ')}</span>
             <span aria-hidden>
               {HEADLINE.map((w, i) => (
@@ -200,7 +200,7 @@ function Problem() {
   ]
   return (
     <section className="border-y border-border bg-surface">
-      <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-24">
+      <div className="mx-auto max-w-[104rem] px-4 py-20 sm:px-6 lg:px-10 xl:px-16 lg:py-24">
         <SectionHeading
           eyebrow="Kenapa Serasi"
           title="Pernikahan bukan hanya soal acara, tapi juga soal kalian berdua."
@@ -232,7 +232,7 @@ function Features() {
   ]
   return (
     <section id="fitur" className="scroll-mt-20">
-      <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-28">
+      <div className="mx-auto max-w-[104rem] px-4 py-20 sm:px-6 lg:px-10 xl:px-16 lg:py-28">
         <SectionHeading eyebrow="Fitur" title="Semua yang kalian butuhkan, saling terhubung." />
         <Stagger className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <StaggerItem className="relative overflow-hidden rounded-[1.5rem] bg-primary p-7 text-on-primary sm:col-span-2 md:p-9 lg:row-span-2">
@@ -276,7 +276,7 @@ function KnowEachOther() {
   return (
     <section id="kenali" className="relative scroll-mt-20 overflow-hidden bg-ink">
       <div aria-hidden className="absolute inset-0 bg-[radial-gradient(50%_70%_at_0%_0%,color-mix(in_srgb,var(--color-primary)_95%,transparent),transparent),radial-gradient(50%_70%_at_100%_100%,color-mix(in_srgb,var(--color-partner)_80%,transparent),transparent)]" />
-      <div className="relative mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-28">
+      <div className="relative mx-auto max-w-[104rem] px-4 py-20 sm:px-6 lg:px-10 xl:px-16 lg:py-28">
         <SectionHeading
           dark
           eyebrow="Kenali pasanganmu"
@@ -385,7 +385,7 @@ function DeepTalkDemo() {
 function BudgetSection() {
   return (
     <section className="border-b border-border bg-surface">
-      <div className="mx-auto grid grid-cols-1 max-w-6xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:items-center lg:py-28">
+      <div className="mx-auto grid grid-cols-1 max-w-[104rem] gap-12 px-4 py-20 sm:px-6 lg:px-10 xl:px-16 lg:grid-cols-2 lg:items-center lg:py-28">
         <div>
           <SectionHeading eyebrow="Kejelasan finansial" title="Sisa anggaran bukan berarti uangnya sudah ada." text="Kami memisahkan konsep yang sering tertukar, supaya kalian tahu kondisi sebenarnya." />
           <Stagger as="div" className="mt-8 space-y-5">
@@ -460,7 +460,7 @@ function BudgetSection() {
 function VendorSection() {
   return (
     <section>
-      <div className="mx-auto grid grid-cols-1 max-w-6xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:items-center lg:py-28">
+      <div className="mx-auto grid grid-cols-1 max-w-[104rem] gap-12 px-4 py-20 sm:px-6 lg:px-10 xl:px-16 lg:grid-cols-2 lg:items-center lg:py-28">
         <Reveal className="order-last lg:order-first">
           <figure>
             <div className="rounded-[1.5rem] border border-border bg-surface p-5 shadow-card sm:p-6" aria-hidden>
@@ -519,7 +519,7 @@ function HowItWorks() {
   ]
   return (
     <section id="cara-kerja" className="scroll-mt-20 bg-primary text-on-primary">
-      <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-28">
+      <div className="mx-auto max-w-[104rem] px-4 py-20 sm:px-6 lg:px-10 xl:px-16 lg:py-28">
         <SectionHeading dark eyebrow="Cara kerja" title="Tiga langkah untuk mulai berdua." />
         <Stagger as="ol" className="mt-12 grid grid-cols-1 gap-8 md:grid-cols-3">
           {steps.map((s, i) => (
@@ -542,7 +542,7 @@ function Pricing() {
   const free = PLAN_ROWS.filter((r) => r.free !== false).map((r) => (typeof r.free === 'string' ? `${r.label}: ${r.free}` : r.label))
   return (
     <section id="harga" className="scroll-mt-20">
-      <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-28">
+      <div className="mx-auto max-w-[104rem] px-4 py-20 sm:px-6 lg:px-10 xl:px-16 lg:py-28">
         <SectionHeading center eyebrow="Paket" title="Mulai gratis. Upgrade sekali, untuk berdua." />
         <Stagger className="mx-auto mt-12 grid max-w-4xl gap-5 md:grid-cols-2">
           <StaggerItem className="flex flex-col rounded-[1.5rem] border border-border bg-surface p-7 shadow-card">
@@ -657,7 +657,7 @@ function Faq() {
 function FinalCta() {
   return (
     <section>
-      <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+      <div className="mx-auto max-w-[104rem] px-4 py-20 sm:px-6 lg:px-10 xl:px-16">
         <Reveal>
           <div className="relative overflow-hidden rounded-[2rem] px-6 py-16 text-center sm:px-12 sm:py-20">
             <picture aria-hidden>
