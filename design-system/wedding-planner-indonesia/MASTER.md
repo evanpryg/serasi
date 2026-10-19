@@ -91,13 +91,14 @@ Komponen di `src/components/ui/PageKit.tsx`. Urutan tetap supaya pengguna tidak 
   di acara berbeda (Make up lamaran ≠ Make up wedding). Hapus acara tidak menghapus pos (pindah ke "Tanpa acara").
   Urutan: kartu ringkasan **gelap** (gradien primary-deep→primary, cincin emas dekoratif, angka putih, 3 stat kaca:
   Aktual terpakai / Belum dibayar / Uang yang ada) → kartu pilih acara (ikon + "aktual / anggaran", geser horizontal di mobile)
-  → per acara: kepala berwarna (tile ikon, tanggal, Anggaran/Aktual/Sisa) + pos → **Catatan pengeluaran** → jadwal bayar vendor.
+  → per acara: kepala berwarna (tile ikon, tanggal, Anggaran/Aktual/Sisa) + pos → jadwal bayar vendor.
   Warna acara bergilir primary/gold/partner/success; selalu disertai ikon + nama.
   **Realisasi:** `expenses.amount` = harga rencana, `actual_amount` = yang benar-benar dibayar (null = sama). Mencentang item membuka
   panel "Berapa yang benar-benar dibayar?" (nominal default = harga, tanggal hari ini, "Sesuai harga"). Item lunas dihitung
   `expenseValue()` di lib/finance. Selisih ditampilkan "hemat"/"lebih" (ikon + teks). Badge pos "Hemat Rp …" hanya bila item dibayar
   lebih murah dari rencananya — sisa jatah yang belum dibelanjakan tetap disebut "sisa", bukan hemat.
-  Catatan pengeluaran = item lunas + pembayaran vendor `paid`, per bulan, ada form catat cepat (pos dikelompokkan per acara).
+  Tidak ada catatan pengeluaran terpisah (dihapus 2026-10-19): uang keluar dicatat hanya lewat centang item (nominal aktual) atau
+  pembayaran vendor, agar tidak ada dua jalur input dan setiap pengeluaran pasti punya acara + pos.
   Ikon pos ditebak dari nama (`posIcon`): kuas = make up, bunga = dekor, kamera = dokumentasi, dst.
   Pos = kartu accordion (`h3 > button`, isi hanya span): tile ikon · nama + chevron, baris 2 badge · "aktual Rp … / anggaran Rp …"
   dan "sisa Rp …" di kanan. Tombol tambah pos ada di bawah tiap acara.

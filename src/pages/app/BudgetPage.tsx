@@ -24,14 +24,13 @@ import { ConfirmDialog, HowTo, PageHeader, useConfirm } from '@/components/ui/Pa
 import { CountUp, m } from '@/components/motion'
 import { cn } from '@/lib/cn'
 import { formatDateShort, formatRupiah, formatRupiahShort, relativeDueLabel } from '@/lib/format'
-import { calculateFinance, expenseValue, type CategorySummary } from '@/lib/finance'
+import { calculateFinance, type CategorySummary } from '@/lib/finance'
 import { NEUTRAL_TONE, POS_SUGGESTIONS, POS_SUGGESTIONS_DEFAULT, eventIcon, eventTone, type EventTone } from '@/lib/budgetIcons'
 import type { BudgetCategory, BudgetEvent, Expense, PaymentType } from '@/lib/database.types'
 import { removeItemPhoto, uploadItemPhoto } from '@/lib/itemPhoto'
 import { CategoryCard, type VendorLine } from './budget/CategoryCard'
 import { CategoryForm } from './budget/CategoryForm'
 import { EventManager } from './budget/EventManager'
-import { SpendLog, type LogEntry, type PosOption } from './budget/SpendLog'
 
 const PAYMENT_TYPE: Record<PaymentType, string> = {
   dp: 'DP',
@@ -76,7 +75,6 @@ export function BudgetPage() {
   const [addingIn, setAddingIn] = useState<string | null>(null)
   const [justCreated, setJustCreated] = useState<string | null>(null)
   const [managerOpen, setManagerOpen] = useState(false)
-  const [logSignal, setLogSignal] = useState(0)
   const confirmItem = useConfirm<Expense>()
   const confirmPos = useConfirm<BudgetCategory>()
   const confirmEvent = useConfirm<BudgetEvent>()
@@ -199,51 +197,7 @@ export function BudgetPage() {
       })
       .filter((v) => v.paid > 0 || v.outstanding > 0)
 
-  // Catatan pengeluaran: item lunas + pembayaran vendor yang sudah dibayar.
-  const catById = new Map(categories.map((c) => [c.id, c]))
-  const eventName = (c: BudgetCategory | undefined) => (c && groupOf(c) !== NO_EVENT ? events.find((e) => e.id === c.event_id)?.name ?? null : null)
-  const vendorById = new Map(vendors.map((v) => [v.id, v]))
-  const logAll: (LogEntry & { group: string })[] = [
-    ...expenses
-      .filter((e) => e.status === 'paid')
-      .map((e) => {
-        const c = catById.get(e.category_id)
-        return {
-          id: e.id,
-          kind: 'item' as const,
-          title: e.title,
-          date: e.expense_date,
-          value: expenseValue(e),
-          planned: e.amount > 0 ? e.amount : null,
-          posName: c?.name ?? 'Pos dihapus',
-          isReserve: Boolean(c?.is_reserve),
-          eventName: eventName(c),
-          group: c ? groupOf(c) : NO_EVENT,
-        }
-      }),
-    ...payments
-      .filter((p) => p.status === 'paid')
-      .map((p) => {
-        const v = p.wedding_vendor_id ? vendorById.get(p.wedding_vendor_id) : undefined
-        const c = v?.category_id ? catById.get(v.category_id) : undefined
-        return {
-          id: `pay-${p.id}`,
-          kind: 'vendor' as const,
-          title: p.notes ?? `${PAYMENT_TYPE[p.payment_type]} ${v?.custom_name ?? 'vendor'}`,
-          date: p.payment_date,
-          value: p.amount,
-          planned: null,
-          posName: c?.name ?? v?.custom_name ?? 'Vendor',
-          isReserve: false,
-          eventName: eventName(c),
-          group: c ? groupOf(c) : NO_EVENT,
-        }
-      }),
-  ]
-  const logEntries = logAll
   const groupLabel = (key: string) => (key === NO_EVENT ? (events.length ? 'Tanpa acara' : 'Pos anggaran') : (events.find((e) => e.id === key)?.name ?? ''))
-  const posOptions: PosOption[] = groupKeys.flatMap((key) => catsIn(key).map((c) => ({ id: c.id, name: c.name, group: groupLabel(key) })))
-  const defaultPosId = categories[0]?.id ?? null
 
   const scheduledPayments = payments.filter((p) => p.status === 'scheduled').sort((a, b) => (a.due_date ?? '').localeCompare(b.due_date ?? ''))
   const settledPayments = payments.filter((p) => p.status !== 'scheduled')
@@ -339,14 +293,7 @@ export function BudgetPage() {
     <div className="space-y-6 lg:space-y-8">
       <PageHeader
         title="Anggaran"
-        description="Atur uang per acara — lamaran, prewedding, wedding, honeymoon — lalu catat berapa yang benar-benar keluar."
-        actions={
-          categories.length > 0 && (
-            <Button icon={<Receipt className="size-4" aria-hidden />} onClick={() => setLogSignal((n) => n + 1)}>
-              Catat pengeluaran
-            </Button>
-          )
-        }
+        description="Atur uang per acara — lamaran, prewedding, wedding, honeymoon — lalu centang item yang sudah dibayar beserta nominal aktualnya."
       />
 
       <HowTo
@@ -555,14 +502,6 @@ export function BudgetPage() {
           </>
         )}
       </section>
-
-      <SpendLog
-        entries={logEntries}
-        posOptions={posOptions}
-        defaultPosId={defaultPosId}
-        openSignal={logSignal}
-        onAdd={({ category_id, title, amount, date }) => createExpense({ category_id, title, amount, status: 'paid', expense_date: date })}
-      />
 
       {payments.length > 0 && (
         <section aria-labelledby="bayar-heading" className="space-y-3">
