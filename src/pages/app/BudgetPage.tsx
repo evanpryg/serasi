@@ -3,10 +3,7 @@ import { Link } from 'react-router'
 import {
   AlertTriangle,
   CalendarClock,
-  CalendarDays,
   CheckCircle2,
-  ChevronDown,
-  ChevronsUpDown,
   Crown,
   FolderOpen,
   PiggyBank,
@@ -24,9 +21,9 @@ import { Card, Badge } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { EmptyState, ErrorState, Skeleton } from '@/components/ui/Feedback'
 import { ConfirmDialog, HowTo, PageHeader, useConfirm } from '@/components/ui/PageKit'
-import { AnimatePresence, CountUp, EASE_OUT, m } from '@/components/motion'
+import { CountUp, m } from '@/components/motion'
 import { cn } from '@/lib/cn'
-import { formatDate, formatDateShort, formatRupiah, formatRupiahShort, relativeDueLabel } from '@/lib/format'
+import { formatDateShort, formatRupiah, formatRupiahShort, relativeDueLabel } from '@/lib/format'
 import { calculateFinance, expenseValue, type CategorySummary } from '@/lib/finance'
 import { NEUTRAL_TONE, POS_SUGGESTIONS, POS_SUGGESTIONS_DEFAULT, eventIcon, eventTone, type EventTone } from '@/lib/budgetIcons'
 import type { BudgetCategory, BudgetEvent, Expense, PaymentType } from '@/lib/database.types'
@@ -74,7 +71,8 @@ export function BudgetPage() {
   const budget = useBudgetData(wedding.id)
   const { state, reload, createExpense, updateExpense, deleteExpense, createCategory, updateCategory, deleteCategory, createEvent, updateEvent, deleteEvent } = budget
   const [open, setOpen] = useState<Set<string>>(openFromHash)
-  const [expandedEvents, setExpandedEvents] = useState<Set<string>>(() => new Set<string>())
+  // Satu acara terpilih pada satu waktu (pola master-detail) — grid tetap ringkas, detail fokus.
+  const [selected, setSelected] = useState<string | null>(null)
   const [addingIn, setAddingIn] = useState<string | null>(null)
   const [justCreated, setJustCreated] = useState<string | null>(null)
   const [managerOpen, setManagerOpen] = useState(false)
@@ -83,6 +81,7 @@ export function BudgetPage() {
   const confirmPos = useConfirm<BudgetCategory>()
   const confirmEvent = useConfirm<BudgetEvent>()
   const addRef = useRef<HTMLDivElement>(null)
+  const detailRef = useRef<HTMLDivElement>(null)
 
   // Gulir ke pos yang dibuka lewat tautan setelah data termuat dan buka kartu acara yang menaunginya.
   const ready = state.status === 'ready'
@@ -94,7 +93,7 @@ export function BudgetPage() {
       if (cat) {
         const evIds = new Set(state.data.events.map((e) => e.id))
         const grp = cat.event_id && evIds.has(cat.event_id) ? cat.event_id : NO_EVENT
-        setExpandedEvents((prev) => new Set(prev).add(grp))
+        setSelected(grp)
       }
       setTimeout(() => {
         document.getElementById(`pos-${id}`)?.scrollIntoView({ block: 'start', behavior: 'smooth' })
@@ -113,25 +112,15 @@ export function BudgetPage() {
     })
   }
 
-  function toggleEvent(key: string) {
-    setExpandedEvents((prev) => {
-      const next = new Set(prev)
-      if (next.has(key)) next.delete(key)
-      else next.add(key)
-      return next
-    })
-  }
-
-  function expandAll(keys: string[]) {
-    setExpandedEvents(new Set(keys))
-  }
-
-  function collapseAll() {
-    setExpandedEvents(new Set())
+  /** Pilih acara dan gulir ke detailnya (penting di mobile, detail ada di bawah grid). */
+  function selectEvent(key: string) {
+    setSelected(key)
+    setAddingIn(null)
+    requestAnimationFrame(() => detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
   }
 
   function startAdding(groupKey: string) {
-    setExpandedEvents((prev) => new Set(prev).add(groupKey))
+    setSelected(groupKey)
     setAddingIn(groupKey)
     requestAnimationFrame(() => addRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
   }
@@ -188,7 +177,8 @@ export function BudgetPage() {
   const catSummary = new Map(fin.categories.map((c) => [c.id, c]))
 
   const groupKeys = events.length === 0 ? [NO_EVENT] : [...events.map((e) => e.id), ...(orphanCount > 0 ? [NO_EVENT] : [])]
-  const allExpanded = groupKeys.length > 0 && groupKeys.every((k) => expandedEvents.has(k))
+  // Acara yang sedang dibuka di panel detail; default ke acara pertama agar detail selalu terlihat.
+  const activeKey = selected && groupKeys.includes(selected) ? selected : (groupKeys[0] ?? null)
 
   // Kontrak vendor per pos (hanya dibaca; dikelola di halaman Vendor).
   const paidByVendor = new Map<string, number>()
@@ -260,46 +250,33 @@ export function BudgetPage() {
 
   const existingNames = (eventId: string | null) => categories.filter((c) => (c.event_id ?? null) === eventId).map((c) => c.name)
 
-  function renderEventCard(key: string) {
+  /** Isi panel detail: daftar pos acara + form tambah pos. */
+  function renderPosList(key: string) {
     const ev = events.find((e) => e.id === key)
-    const index = ev ? events.indexOf(ev) : -1
     const cats = catsIn(key)
-    const tone = ev ? eventTone(index) : NEUTRAL_TONE
-    const Icon: LucideIcon = ev ? eventIcon(ev.icon) : FolderOpen
-    const t = totalsOf(cats, catSummary)
     const title = groupLabel(key)
     const isAdding = addingIn === key
-    const isExpanded = expandedEvents.has(key)
-    const emptyMsg =
-      cats.length === 0
-        ? `Belum ada pos. Contoh: ${((ev?.template_key && POS_SUGGESTIONS[ev.template_key]) || POS_SUGGESTIONS_DEFAULT).slice(0, 4).join(', ')}.`
-        : undefined
+    const canAdd = Boolean(ev) || events.length === 0
+    const emptyMsg = `Belum ada pos. Contoh: ${((ev?.template_key && POS_SUGGESTIONS[ev.template_key]) || POS_SUGGESTIONS_DEFAULT)
+      .slice(0, 4)
+      .join(', ')}.`
 
     return (
-      <BigEventCard
-        key={key}
-        id={`acara-${key}`}
-        title={title}
-        subtitle={
-          ev
-            ? `${ev.event_date ? formatDate(ev.event_date) : 'Tanggal belum diatur'} · ${cats.length} pos`
-            : events.length
-              ? `${cats.length} pos belum masuk acara. Ubah pos untuk memindahkannya.`
-              : `${cats.length} pos`
-        }
-        icon={Icon}
-        tone={tone}
-        totals={t}
-        posCount={cats.length}
-        isExpanded={isExpanded}
-        onToggle={() => toggleEvent(key)}
-        onEdit={ev ? () => setManagerOpen(true) : undefined}
-        empty={emptyMsg}
-        isAdding={isAdding}
-        onStartAdd={ev || events.length === 0 ? () => startAdding(key) : undefined}
-      >
-        <div className="space-y-3">
-          {cats.map((cat) => (
+      <div className="space-y-3">
+        {cats.length === 0 && !isAdding ? (
+          <div className="rounded-2xl border border-dashed border-border-strong bg-surface/80 p-5 text-center">
+            <p className="font-semibold text-ink">Belum ada pos anggaran di {title}</p>
+            <p className="mx-auto mt-1 max-w-md text-xs text-ink-muted">{emptyMsg}</p>
+            {canAdd && (
+              <div className="mt-4 flex justify-center">
+                <Button size="sm" icon={<Plus className="size-4" aria-hidden />} onClick={() => startAdding(key)}>
+                  Tambah pos pertama
+                </Button>
+              </div>
+            )}
+          </div>
+        ) : (
+          cats.map((cat) => (
             <CategoryCard
               key={cat.id}
               category={cat}
@@ -318,43 +295,43 @@ export function BudgetPage() {
               removePhoto={removePhoto}
               events={events}
             />
-          ))}
+          ))
+        )}
 
-          {isAdding ? (
-            <div ref={addRef} className="scroll-mt-24">
-              <Card className="animate-fade-up p-4 sm:p-5">
-                <h3 className="mb-3 font-semibold text-ink">Pos baru{ev ? ` untuk ${ev.name}` : ''}</h3>
-                <CategoryForm
-                  events={events}
-                  defaultEventId={ev?.id ?? null}
-                  existingNames={existingNames}
-                  onSubmit={async (input) => {
-                    const id = await createCategory(input)
-                    setAddingIn(null)
-                    setJustCreated(id)
-                    setOpen((prev) => new Set(prev).add(id))
-                    requestAnimationFrame(() => document.getElementById(`pos-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
-                  }}
-                  onCancel={() => setAddingIn(null)}
-                />
-              </Card>
-            </div>
-          ) : (
-            // Grup "Tanpa acara" hanya untuk pos lama; pos baru selalu dibuat di dalam acara.
-            (ev || events.length === 0) &&
-            cats.length > 0 && (
-              <button
-                type="button"
-                onClick={() => startAdding(key)}
-                className="flex min-h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-card border border-dashed border-border-strong bg-surface/70 text-sm font-semibold text-primary transition-colors hover:border-primary hover:bg-primary-soft/50"
-              >
-                <Plus className="size-4" aria-hidden />
-                Tambah pos di {title}
-              </button>
-            )
-          )}
-        </div>
-      </BigEventCard>
+        {isAdding ? (
+          <div ref={addRef} className="scroll-mt-24">
+            <Card className="animate-fade-up p-4 sm:p-5">
+              <h3 className="mb-3 font-semibold text-ink">Pos baru{ev ? ` untuk ${ev.name}` : ''}</h3>
+              <CategoryForm
+                events={events}
+                defaultEventId={ev?.id ?? null}
+                existingNames={existingNames}
+                onSubmit={async (input) => {
+                  const id = await createCategory(input)
+                  setAddingIn(null)
+                  setJustCreated(id)
+                  setOpen((prev) => new Set(prev).add(id))
+                  requestAnimationFrame(() => document.getElementById(`pos-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+                }}
+                onCancel={() => setAddingIn(null)}
+              />
+            </Card>
+          </div>
+        ) : (
+          // Grup "Tanpa acara" hanya untuk pos lama; pos baru selalu dibuat di dalam acara.
+          canAdd &&
+          cats.length > 0 && (
+            <button
+              type="button"
+              onClick={() => startAdding(key)}
+              className="flex min-h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-card border border-dashed border-border-strong bg-surface/70 text-sm font-semibold text-primary transition-colors hover:border-primary hover:bg-primary-soft/50"
+            >
+              <Plus className="size-4" aria-hidden />
+              Tambah pos di {title}
+            </button>
+          )
+        )}
+      </div>
     )
   }
 
@@ -469,34 +446,17 @@ export function BudgetPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 id="acara-section-heading" className="font-display text-2xl font-semibold text-ink">
-              Acara Pernikahan
+              Anggaran per acara
             </h2>
             <p className="text-sm text-ink-muted">
               {events.length > 0
-                ? 'Klik kartu acara untuk melihat dan mengatur pos-pos anggarannya.'
+                ? 'Budget, yang sudah terpakai, dan sisa tiap acara. Ketuk kartu untuk mengatur pos di dalamnya.'
                 : 'Kelompokkan anggaran per acara agar terencana rapi.'}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            {groupKeys.length > 1 && (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => (allExpanded ? collapseAll() : expandAll(groupKeys))}
-                icon={<ChevronsUpDown className="size-4" aria-hidden />}
-              >
-                {allExpanded ? 'Tutup semua' : 'Buka semua'}
-              </Button>
-            )}
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setManagerOpen(true)}
-              icon={<Settings2 className="size-4" aria-hidden />}
-            >
-              Kelola acara
-            </Button>
-          </div>
+          <Button variant="secondary" size="sm" onClick={() => setManagerOpen(true)} icon={<Settings2 className="size-4" aria-hidden />}>
+            Kelola acara
+          </Button>
         </div>
 
         {categories.length === 0 && events.length === 0 && addingIn == null ? (
@@ -511,19 +471,88 @@ export function BudgetPage() {
             }
           />
         ) : (
-          <div className="space-y-4">
-            {groupKeys.map(renderEventCard)}
+          <>
+            {/* Ringkasan ringkas tiap acara — dua kolom, bisa dipindai sekilas. */}
+            <div className="grid gap-3 sm:grid-cols-2">
+              {groupKeys.map((key) => {
+                const ev = events.find((e) => e.id === key)
+                const index = ev ? events.indexOf(ev) : -1
+                return (
+                  <EventBudgetCard
+                    key={key}
+                    title={groupLabel(key)}
+                    date={ev?.event_date ?? null}
+                    posCount={catsIn(key).length}
+                    totals={totalsOf(catsIn(key), catSummary)}
+                    icon={ev ? eventIcon(ev.icon) : FolderOpen}
+                    tone={ev ? eventTone(index) : NEUTRAL_TONE}
+                    active={activeKey === key}
+                    isOrphan={!ev && events.length > 0}
+                    onSelect={() => selectEvent(key)}
+                  />
+                )
+              })}
 
-            {/* Tombol Tambah Acara Baru di bagian bawah kartu */}
-            <button
-              type="button"
-              onClick={() => setManagerOpen(true)}
-              className="flex min-h-14 w-full cursor-pointer items-center justify-center gap-2 rounded-[1.5rem] border border-dashed border-border-strong bg-surface/60 p-4 text-sm font-semibold text-primary transition-all duration-200 hover:border-primary hover:bg-primary-soft/50 shadow-sm"
-            >
-              <Plus className="size-4" aria-hidden />
-              Tambah acara baru (Lamaran, Akad, Resepsi, Honeymoon, ...)
-            </button>
-          </div>
+              {/* Tambah acara baru — ubin ringkas sejajar kartu acara. */}
+              <button
+                type="button"
+                onClick={() => setManagerOpen(true)}
+                className="flex min-h-[7rem] cursor-pointer flex-col items-center justify-center gap-1.5 rounded-[1.25rem] border border-dashed border-border-strong bg-surface/50 p-4 text-sm font-semibold text-primary transition-colors hover:border-primary hover:bg-primary-soft/40"
+              >
+                <span className="flex size-10 items-center justify-center rounded-xl bg-primary-soft text-primary" aria-hidden>
+                  <Plus className="size-5" />
+                </span>
+                Tambah acara
+                <span className="text-xs font-normal text-ink-muted">Lamaran, Akad, Honeymoon, ...</span>
+              </button>
+            </div>
+
+            {/* Panel detail acara terpilih: pos-pos di dalamnya. */}
+            {activeKey && (
+              <div ref={detailRef} className="scroll-mt-24">
+                {(() => {
+                  const ev = events.find((e) => e.id === activeKey)
+                  const index = ev ? events.indexOf(ev) : -1
+                  const tone = ev ? eventTone(index) : NEUTRAL_TONE
+                  const Icon: LucideIcon = ev ? eventIcon(ev.icon) : FolderOpen
+                  const t = totalsOf(catsIn(activeKey), catSummary)
+                  const title = groupLabel(activeKey)
+                  const left = t.planned - t.committed
+                  const over = left < 0
+                  return (
+                    <section
+                      aria-labelledby="detail-acara-heading"
+                      className={cn('overflow-hidden rounded-[1.5rem] border bg-surface shadow-card', tone.border)}
+                    >
+                      <div className={cn('flex flex-wrap items-center justify-between gap-3 border-b border-border/70 bg-gradient-to-br to-surface to-80% p-4 sm:px-6', tone.from)}>
+                        <div className="flex min-w-0 items-center gap-3">
+                          <span className={cn('flex size-11 shrink-0 items-center justify-center rounded-2xl shadow-sm', tone.tile)} aria-hidden>
+                            <Icon className="size-5" />
+                          </span>
+                          <div className="min-w-0">
+                            <h3 id="detail-acara-heading" className="truncate font-display text-xl font-semibold text-ink">
+                              {title}
+                            </h3>
+                            <p className="text-xs text-ink-muted">
+                              {catsIn(activeKey).length} pos · sisa{' '}
+                              <strong className={cn('tabular font-semibold', over ? 'text-danger' : 'text-ink')}>{formatRupiah(Math.abs(left))}</strong>
+                              {over && ' (lebih)'}
+                            </p>
+                          </div>
+                        </div>
+                        {ev && (
+                          <Button variant="ghost" size="sm" onClick={() => setManagerOpen(true)} icon={<Settings2 className="size-3.5" aria-hidden />}>
+                            Ubah acara
+                          </Button>
+                        )}
+                      </div>
+                      <div className="p-4 sm:p-5">{renderPosList(activeKey)}</div>
+                    </section>
+                  )
+                })()}
+              </div>
+            )}
+          </>
         )}
       </section>
 
@@ -604,7 +633,7 @@ export function BudgetPage() {
         onClose={() => setManagerOpen(false)}
         onCreate={async (input) => {
           const id = await createEvent(input)
-          setExpandedEvents((prev) => new Set(prev).add(id))
+          setSelected(id)
           return id
         }}
         onUpdate={(id, input) => updateEvent(id, input)}
@@ -634,11 +663,7 @@ export function BudgetPage() {
           const target = confirmEvent.target
           if (!target) return
           await deleteEvent(target.id)
-          setExpandedEvents((prev) => {
-            const next = new Set(prev)
-            next.delete(target.id)
-            return next
-          })
+          setSelected((cur) => (cur === target.id ? null : cur))
         }}
         onClose={confirmEvent.close}
       />
@@ -705,259 +730,109 @@ function HeroStat({ icon: Icon, label, value, dot, warn }: { icon: LucideIcon; l
   )
 }
 
-function BigEventCard({
-  id,
+/**
+ * Kartu ringkas satu acara untuk grid 2 kolom: budget · terpakai · sisa dalam sekilas.
+ * Ketuk untuk membuka panel detail (pos) di bawah grid.
+ */
+function EventBudgetCard({
   title,
-  subtitle,
+  date,
+  posCount,
+  totals,
   icon: Icon,
   tone,
-  totals,
-  posCount,
-  isExpanded,
-  onToggle,
-  onEdit,
-  empty,
-  isAdding,
-  onStartAdd,
-  children,
+  active,
+  isOrphan,
+  onSelect,
 }: {
-  id: string
   title: string
-  subtitle: string
+  date: string | null
+  posCount: number
+  totals: Totals
   icon: LucideIcon
   tone: EventTone
-  totals: Totals
-  posCount: number
-  isExpanded: boolean
-  onToggle: () => void
-  onEdit?: () => void
-  empty?: string
-  isAdding?: boolean
-  onStartAdd?: () => void
-  children: ReactNode
+  active: boolean
+  isOrphan: boolean
+  onSelect: () => void
 }) {
   const left = totals.planned - totals.committed
   const over = left < 0
-  const actualRatio = ratio(totals.actual, totals.planned)
-  const committedRatio = ratio(totals.committed, totals.planned)
   const pct = totals.planned > 0 ? Math.round((totals.actual / totals.planned) * 100) : 0
+  const meta = isOrphan
+    ? `${posCount} pos belum masuk acara`
+    : `${posCount} pos${date ? ` · ${formatDateShort(date)}` : ''}`
 
   return (
-    <section
-      aria-labelledby={id}
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={active}
       className={cn(
-        'relative overflow-hidden rounded-[1.5rem] border bg-gradient-to-br to-surface to-70% shadow-card transition-all duration-200',
-        tone.border,
+        'group flex min-h-[7rem] w-full cursor-pointer flex-col gap-3 rounded-[1.25rem] border bg-gradient-to-br to-surface to-80% p-4 text-left shadow-card transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:p-5',
         tone.from,
-        isExpanded ? 'ring-1 ring-primary/20 shadow-pop' : 'hover:border-border-strong hover:shadow-pop',
+        active ? 'border-primary/60 ring-2 ring-primary/30 shadow-pop' : cn(tone.border, 'hover:border-border-strong hover:shadow-pop'),
       )}
     >
-      {/* Kartu Besar Header - Klik untuk buka / tutup detail */}
-      <div
-        role="button"
-        tabIndex={0}
-        aria-expanded={isExpanded}
-        onClick={onToggle}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault()
-            onToggle()
-          }
-        }}
-        className="group cursor-pointer p-4 sm:p-6 select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3.5 min-w-0">
-            <span
-              className={cn(
-                'flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl shadow-sm transition-transform duration-200 group-hover:scale-105',
-                tone.tile,
-              )}
-              aria-hidden
-            >
-              <Icon className="size-6 sm:size-7" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <h2 id={id} className="truncate font-display text-2xl sm:text-[1.75rem] font-semibold text-ink leading-tight">
-                {title}
-              </h2>
-              <p className="flex items-center gap-1.5 text-xs sm:text-sm text-ink-muted mt-0.5">
-                <CalendarDays className="size-3.5 shrink-0" aria-hidden />
-                <span className="truncate">{subtitle}</span>
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            {onEdit && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onEdit()
-                }}
-                aria-label={`Ubah acara ${title}`}
-                className="flex size-9 sm:size-10 cursor-pointer items-center justify-center rounded-xl bg-surface/70 text-ink-muted transition-colors hover:bg-surface hover:text-ink ring-1 ring-border/60"
-              >
-                <Settings2 className="size-4" aria-hidden />
-              </button>
-            )}
-            <span
-              className={cn(
-                'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ring-1',
-                isExpanded
-                  ? 'bg-primary text-on-primary ring-primary shadow-sm'
-                  : 'bg-surface/90 text-ink ring-border/70 group-hover:bg-primary-soft group-hover:text-primary group-hover:ring-primary/40',
-              )}
-            >
-              <span>{isExpanded ? 'Tutup' : 'Detail'}</span>
-              <ChevronDown className={cn('size-3.5 transition-transform duration-200', isExpanded && 'rotate-180')} aria-hidden />
-            </span>
-          </div>
-        </div>
-
-        {/* Panel Finansial Utama: Total budget dan aktualisasinya (aktual / budget) */}
-        <div className="mt-4 rounded-2xl bg-surface/90 p-4 ring-1 ring-border/70 backdrop-blur-sm sm:p-5">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
-                Realisasi Anggaran
-              </span>
-              <div className="mt-1 flex items-baseline gap-2 flex-wrap">
-                <span className="font-num text-2xl sm:text-3xl font-bold text-ink">
-                  {formatRupiah(totals.actual)}
-                </span>
-                <span className="font-num text-base sm:text-lg font-medium text-ink-muted">
-                  / {formatRupiah(totals.planned)}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              {over ? (
-                <Badge tone="danger" className="text-xs font-semibold">
-                  <AlertTriangle className="size-3.5" aria-hidden />
-                  Terlampaui {formatRupiah(Math.abs(left))}
-                </Badge>
-              ) : totals.planned > 0 ? (
-                <Badge tone={totals.actual > 0 ? 'success' : 'neutral'} className="text-xs font-semibold">
-                  {pct}% terealisasi
-                </Badge>
-              ) : (
-                <Badge tone="neutral" className="text-xs font-semibold">
-                  Belum dianggarkan
-                </Badge>
-              )}
-              <span className="text-xs text-ink-muted font-medium">
-                Sisa:{' '}
-                <strong className={cn('font-num font-semibold', over ? 'text-danger' : 'text-ink')}>
-                  {formatRupiah(Math.max(0, left))}
-                </strong>
-              </span>
-            </div>
-          </div>
-
-          {/* Progress bar */}
-          <div
-            role="img"
-            aria-label={`Aktual ${formatRupiah(totals.actual)} dari budget ${formatRupiah(totals.planned)}`}
-            className="relative mt-3 h-2 sm:h-2.5 overflow-hidden rounded-full bg-surface-muted ring-1 ring-border/50"
-          >
-            <div
-              className="absolute inset-y-0 left-0 rounded-full bg-gold/70 transition-all duration-500"
-              style={{ width: `${committedRatio * 100}%` }}
-            />
-            <div
-              className={cn(
-                'absolute inset-y-0 left-0 rounded-full transition-all duration-500',
-                over ? 'bg-danger' : tone.bar,
-              )}
-              style={{ width: `${actualRatio * 100}%` }}
-            />
-          </div>
-
-          {/* 3 kolom ringkasan */}
-          <div className="mt-3.5 grid grid-cols-3 gap-2 border-t border-border/60 pt-3 text-center sm:text-left">
-            <div className="rounded-xl bg-surface/50 p-2 sm:bg-transparent sm:p-0">
-              <p className="text-[11px] font-medium text-ink-muted">Target Budget</p>
-              <p className="font-num text-sm sm:text-base font-semibold text-ink">{formatRupiahShort(totals.planned)}</p>
-            </div>
-            <div className="rounded-xl bg-surface/50 p-2 sm:bg-transparent sm:p-0">
-              <p className="text-[11px] font-medium text-ink-muted">Aktual Keluar</p>
-              <p className="font-num text-sm sm:text-base font-semibold text-primary">{formatRupiahShort(totals.actual)}</p>
-            </div>
-            <div className="rounded-xl bg-surface/50 p-2 sm:bg-transparent sm:p-0">
-              <p className="text-[11px] font-medium text-ink-muted">{over ? 'Lebih' : 'Sisa Budget'}</p>
-              <p className={cn('font-num text-sm sm:text-base font-semibold', over ? 'text-danger' : 'text-ink')}>
-                {formatRupiahShort(Math.abs(left))}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Petunjuk aksi di bagian bawah kartu */}
-        <div className="mt-3.5 flex items-center justify-between text-xs sm:text-sm">
-          <span className="font-medium text-ink-muted">
-            {posCount === 0
-              ? 'Belum ada pos anggaran'
-              : isExpanded
-                ? `Menampilkan ${posCount} pos anggaran`
-                : `Lihat detail ${posCount} pos & kategori di ${title}`}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className={cn('flex size-11 shrink-0 items-center justify-center rounded-2xl shadow-sm transition-transform duration-200 group-hover:scale-105', tone.tile)} aria-hidden>
+            <Icon className="size-5" />
           </span>
-          <span className="inline-flex items-center gap-1 font-semibold text-primary group-hover:underline">
-            {isExpanded ? 'Tutup detail' : 'Klik untuk lihat pos'}
-            <ChevronDown className={cn('size-4 transition-transform duration-200', isExpanded && 'rotate-180')} aria-hidden />
-          </span>
+          <div className="min-w-0">
+            <p className="truncate font-display text-lg font-semibold leading-tight text-ink">{title}</p>
+            <p className="truncate text-xs text-ink-muted">{meta}</p>
+          </div>
         </div>
+        {totals.planned === 0 ? (
+          <Badge tone="neutral" className="shrink-0 text-[0.7rem]">
+            Belum diatur
+          </Badge>
+        ) : over ? (
+          <Badge tone="danger" className="shrink-0 text-[0.7rem]">
+            <AlertTriangle className="size-3" aria-hidden />
+            Lebih
+          </Badge>
+        ) : (
+          <Badge tone={totals.actual > 0 ? 'success' : 'neutral'} className="shrink-0 text-[0.7rem]">
+            {pct}% terpakai
+          </Badge>
+        )}
       </div>
 
-      {/* Bagian detail yang muncul saat diklik */}
-      <AnimatePresence initial={false}>
-        {isExpanded && (
-          <m.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: EASE_OUT }}
-            className="overflow-hidden border-t border-border/70 bg-surface/50"
-          >
-            <div className="p-4 sm:p-6 space-y-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-sm font-semibold uppercase tracking-wider text-ink-subtle">
-                    Daftar Pos Anggaran ({posCount})
-                  </h3>
-                  <p className="text-xs text-ink-muted mt-0.5">
-                    Pos adalah alokasi untuk kebutuhan di {title}.
-                  </p>
-                </div>
-                {!isAdding && onStartAdd && (
-                  <Button size="sm" variant="secondary" icon={<Plus className="size-3.5" aria-hidden />} onClick={onStartAdd}>
-                    Tambah pos
-                  </Button>
-                )}
-              </div>
+      {/* Bar ganda: emas = termasuk yang belum dibayar, warna acara = sudah dibayar. */}
+      <div
+        role="img"
+        aria-label={`Terpakai ${formatRupiah(totals.actual)} dari budget ${formatRupiah(totals.planned)}`}
+        className="relative h-1.5 overflow-hidden rounded-full bg-surface-muted ring-1 ring-border/50"
+      >
+        <div
+          className={cn('absolute inset-y-0 left-0 rounded-full transition-all duration-500', over ? 'bg-danger/35' : 'bg-gold/70')}
+          style={{ width: `${ratio(totals.committed, totals.planned) * 100}%` }}
+        />
+        <div
+          className={cn('absolute inset-y-0 left-0 rounded-full transition-all duration-500', over ? 'bg-danger' : tone.bar)}
+          style={{ width: `${ratio(totals.actual, totals.planned) * 100}%` }}
+        />
+      </div>
 
-              {posCount === 0 && empty ? (
-                <div className="rounded-2xl border border-dashed border-border-strong bg-surface/80 p-5 text-center">
-                  <p className="font-medium text-ink">Belum ada pos anggaran di {title}</p>
-                  <p className="mt-1 text-xs text-ink-muted max-w-md mx-auto">{empty}</p>
-                  {onStartAdd && (
-                    <div className="mt-4 flex justify-center">
-                      <Button size="sm" icon={<Plus className="size-4" aria-hidden />} onClick={onStartAdd}>
-                        Tambah pos pertama di {title}
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                children
-              )}
-            </div>
-          </m.div>
-        )}
-      </AnimatePresence>
-    </section>
+      <dl className="mt-auto grid grid-cols-3 gap-2">
+        <div>
+          <dt className="text-[0.7rem] text-ink-muted">Budget</dt>
+          <dd className="font-num text-sm font-semibold text-ink">{formatRupiahShort(totals.planned)}</dd>
+        </div>
+        <div>
+          <dt className="flex items-center gap-1 text-[0.7rem] text-ink-muted">
+            <span className={cn('size-1.5 rounded-full', over ? 'bg-danger' : tone.bar)} aria-hidden />
+            Terpakai
+          </dt>
+          <dd className="font-num text-sm font-semibold text-ink">{formatRupiahShort(totals.actual)}</dd>
+        </div>
+        <div>
+          <dt className="text-[0.7rem] text-ink-muted">{over ? 'Lebih' : 'Sisa'}</dt>
+          <dd className={cn('font-num text-sm font-semibold', over ? 'text-danger' : 'text-ink')}>{formatRupiahShort(Math.abs(left))}</dd>
+        </div>
+      </dl>
+    </button>
   )
 }
 
